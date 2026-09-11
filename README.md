@@ -194,12 +194,52 @@ machine running the server — everything else in this app works fully offline.
 If the key is missing, invalid, or the request fails for any reason, the app
 silently falls back to the rule-based analysis; nothing breaks either way.
 
+## Deploying for team access off the farm network
+
+Running it locally (`npm start`, reachable on the farm WiFi at this machine's
+IP) is enough if everyone using it is on-site. For access from anywhere —
+someone checking in from home, a phone on mobile data — move it to a small
+cloud host. No code changes are needed; only configuration.
+
+**Recommended: [Railway](https://railway.app)** (~$5/month). Straightforward
+for a small Node + SQLite app like this one, and gives you HTTPS and a public
+URL automatically. [Render](https://render.com) works the same way if you'd
+rather use that.
+
+1. **Push this repo to GitHub** (Railway deploys from a GitHub repo):
+   ```bash
+   git remote add origin <your-empty-github-repo-url>
+   git push -u origin main
+   ```
+2. **Create a Railway project** from that GitHub repo (railway.app → New
+   Project → Deploy from GitHub repo). When it asks about the builder, pick
+   **Nixpacks** (Railway's default Node auto-detection) rather than the
+   `Dockerfile` in this repo — the Dockerfile is here for self-hosting
+   elsewhere (a VPS, Render's Docker option) but hasn't been build-tested on
+   Railway specifically, and Nixpacks is the well-worn path for a plain Node
+   app like this.
+3. **Add a Volume** (Railway project → your service → Variables/Volumes tab)
+   and mount it at `/data`. Without this, the database lives on the
+   container's disk and is wiped on every redeploy.
+4. **Set environment variables** on the service:
+   - `TRINITY_DATA_DIR=/data` — points the database and backups at the volume
+     you just mounted. Required; without it the app falls back to a path
+     that doesn't persist on this platform.
+   - `NODE_ENV=production` — enables the secure-cookie flag now that traffic
+     is over HTTPS.
+   - `ANTHROPIC_API_KEY=...` — optional, only if you want the AI performance
+     analysis feature (see below).
+   - Railway sets `PORT` itself; nothing to do there.
+5. **Deploy**, then open the Railway-provided URL. It lands on the same
+   first-run **Set Up the Admin Account** page as a fresh local install — no
+   old data carries over automatically (a from-scratch start was the choice
+   made when this was set up; see git history / ask if you want a past
+   database migrated across later).
+6. **Custom domain (optional)**: Railway → Settings → Domains, point your own
+   domain or subdomain at it if you don't want the `*.up.railway.app` URL.
+
 ## Notes on this version
 
-- No login — anyone on the network who can open the app can enter data for any
-  department. Fine for a small trusted team; say the word if you later want named
-  logins per department head.
-- Runs as a single Node process with a local SQLite file, so it works entirely
-  offline on the farm's own network. It can be moved to a small cloud host later
-  (e.g. Railway, Render, a VPS) with no code changes if remote/phone access becomes
-  useful.
+- Runs as a single Node process with one SQLite file. That's genuinely fine at
+  this scale (a handful of concurrent users, modest write volume) — no need
+  for a "real" database server.
