@@ -1,0 +1,97 @@
+<% var title = batch.batch_code + ' · Phase I' %>
+<%- include('../partials/header') %>
+<%- include('../partials/batch-banner') %>
+
+<section class="card">
+  <h2>Phase I Composting (Bunker)</h2>
+  <form class="grid" method="post" action="/batches/<%= batch.id %>/phase1">
+    <div class="field">
+      <label>Start Date (In)</label>
+      <input type="date" name="start_date" value="<%= v(row.start_date) %>" />
+    </div>
+    <div class="field">
+      <label>End Date (Out)</label>
+      <input type="date" name="end_date" value="<%= v(row.end_date) %>" />
+    </div>
+    <div class="field">
+      <label>Days</label>
+      <input type="text" value="<%= daysLabel(days) %>" disabled />
+    </div>
+    <div class="field">
+      <label>Bunker No.</label>
+      <select name="bunker_no"><%- optionsFor(bunkers, row.bunker_no) %></select>
+    </div>
+    <div class="field">
+      <label>Planned Turns</label>
+      <input type="number" name="num_turns_planned" value="<%= v(row.num_turns_planned) %>" />
+    </div>
+    <div class="field wide">
+      <label>Notes</label>
+      <textarea name="notes"><%= v(row.notes) %></textarea>
+    </div>
+    <div class="form-actions">
+      <button class="btn" type="submit">Save Phase I Summary</button>
+      <label class="muted"><input type="checkbox" name="advance" value="1" style="width:auto" /> Mark Phase I complete &amp; move to Phase II</label>
+    </div>
+  </form>
+
+  <h3 style="margin-top:1.5rem">Turn Log</h3>
+  <p class="muted">Readings are captured before each turn.</p>
+  <div class="qc-legend">Target compost temp: <%= qcParam('phase1','pile_temp_c')?.min_value %>&ndash;<%= qcParam('phase1','pile_temp_c')?.max_value %>°C · moisture <%= qcParam('phase1','moisture_pct')?.min_value %>&ndash;<%= qcParam('phase1','moisture_pct')?.max_value %>% · pH <%= qcParam('phase1','ph')?.min_value %>&ndash;<%= qcParam('phase1','ph')?.max_value %></div>
+
+  <% if (readings.length) { %>
+    <div class="chart-wrap"><%- chart %></div>
+    <table>
+      <thead>
+        <tr><th>Turn</th><th>Date</th><th>Bunker</th><th>Compost Temp</th><th>Ambient</th><th>Moisture</th><th>Ammonia</th><th>pH</th><th>By</th><th>Notes</th><th></th></tr>
+      </thead>
+      <tbody>
+        <% readings.forEach(function(r) { %>
+          <tr>
+            <td><%= v(r.turn_number) %></td>
+            <td><%= r.reading_date %></td>
+            <td><%= v(r.bunker_no) %></td>
+            <td><%- qcCell('phase1','pile_temp_c', r.pile_temp_c) %></td>
+            <td><%= v(r.ambient_temp_c) %></td>
+            <td><%- qcCell('phase1','moisture_pct', r.moisture_pct) %></td>
+            <td><%= v(r.ammonia_level) %></td>
+            <td><%- qcCell('phase1','ph', r.ph) %></td>
+            <td><%= v(r.entered_by) %></td>
+            <td><%= v(r.notes) %></td>
+            <td>
+              <form method="post" action="/batches/<%= batch.id %>/phase1/readings/<%= r.id %>/delete" data-confirm="Delete this reading?">
+                <button class="btn small danger" type="submit">Del</button>
+              </form>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } else { %>
+    <div class="empty-state">No readings logged yet.</div>
+  <% } %>
+
+  <form class="grid" method="post" action="/batches/<%= batch.id %>/phase1/readings" style="margin-top:1rem">
+    <div class="field"><label>Turn #</label><input type="number" name="turn_number" /></div>
+    <div class="field"><label>Date</label><input type="date" name="reading_date" /></div>
+    <div class="field"><label>Bunker No.</label><select name="bunker_no"><%- optionsFor(bunkers, row.bunker_no) %></select></div>
+    <div class="field"><label>Compost Temp (°C)</label><input type="number" step="any" name="pile_temp_c" /></div>
+    <div class="field"><label>Ambient Temp (°C)</label><input type="number" step="any" name="ambient_temp_c" /></div>
+    <div class="field"><label>Moisture (%)</label><input type="number" step="any" name="moisture_pct" /></div>
+    <div class="field">
+      <label>Ammonia</label>
+      <select name="ammonia_level">
+        <option value="">—</option>
+        <option value="none">None</option>
+        <option value="mild">Mild</option>
+        <option value="strong">Strong</option>
+      </select>
+    </div>
+    <div class="field"><label>pH</label><input type="number" step="any" name="ph" /></div>
+    <div class="field"><label>Entered By</label><input type="text" name="entered_by" /></div>
+    <div class="field wide"><label>Notes</label><input type="text" name="notes" /></div>
+    <div class="form-actions"><button class="btn" type="submit">Add Reading</button></div>
+  </form>
+</section>
+
+<%- include('../partials/footer') %>

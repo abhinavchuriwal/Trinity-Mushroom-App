@@ -1,0 +1,93 @@
+<% var title = batch.batch_code + ' · Phase II' %>
+<%- include('../partials/header') %>
+<%- include('../partials/batch-banner') %>
+
+<section class="card">
+  <h2>Phase II &mdash; Pasteurization &amp; Conditioning (Tunnel)</h2>
+  <form class="grid" method="post" action="/batches/<%= batch.id %>/phase2">
+    <div class="field"><label>Tunnel ID</label><select name="tunnel_id"><%- optionsFor(tunnels, row.tunnel_id) %></select></div>
+    <div class="field">
+      <label>Fill Date (In)</label>
+      <input type="date" name="fill_date" value="<%= v(row.fill_date) %>" />
+    </div>
+    <div class="field">
+      <label>End Date (Out)</label>
+      <input type="date" name="end_date" value="<%= v(row.end_date) %>" />
+    </div>
+    <div class="field">
+      <label>Days</label>
+      <input type="text" value="<%= daysLabel(days) %>" disabled />
+    </div>
+    <div class="field"><label>Pasteurization Date</label><input type="date" name="pasteurization_date" value="<%= v(row.pasteurization_date) %>" /></div>
+    <div class="field">
+      <label>Pasteurization Temp (°C)</label>
+      <input type="number" step="any" name="pasteurization_temp_c" value="<%= v(row.pasteurization_temp_c) %>" />
+      <%- qcCell('phase2','pasteurization_temp_c', row.pasteurization_temp_c) %>
+    </div>
+    <div class="field">
+      <label>Pasteurization Duration (hrs)</label>
+      <input type="number" step="any" name="pasteurization_duration_hrs" value="<%= v(row.pasteurization_duration_hrs) %>" />
+      <%- qcCell('phase2','pasteurization_duration_hrs', row.pasteurization_duration_hrs) %>
+    </div>
+    <div class="field">
+      <label>Final Moisture (%)</label>
+      <input type="number" step="any" name="final_moisture_pct" value="<%= v(row.final_moisture_pct) %>" />
+      <%- qcCell('phase2','final_moisture_pct', row.final_moisture_pct) %>
+    </div>
+    <div class="field"><label>Compost Color</label><input type="text" name="compost_color" value="<%= v(row.compost_color) %>" placeholder="e.g. dark brown" /></div>
+    <div class="field"><label>Compost Texture</label><input type="text" name="compost_texture" value="<%= v(row.compost_texture) %>" placeholder="e.g. friable, springy" /></div>
+    <div class="field"><label>Compost Smell</label><input type="text" name="compost_smell" value="<%= v(row.compost_smell) %>" placeholder="e.g. sweet, no ammonia" /></div>
+    <div class="field">
+      <label>Ammonia Cleared?</label>
+      <select name="ammonia_cleared">
+        <option value="" <%= !row.ammonia_cleared ? 'selected' : '' %>>—</option>
+        <option value="yes" <%= row.ammonia_cleared === 'yes' ? 'selected' : '' %>>Yes</option>
+        <option value="no" <%= row.ammonia_cleared === 'no' ? 'selected' : '' %>>No</option>
+      </select>
+    </div>
+    <div class="field wide"><label>Notes</label><textarea name="notes"><%= v(row.notes) %></textarea></div>
+    <div class="form-actions">
+      <button class="btn" type="submit">Save Phase II Summary</button>
+      <label class="muted"><input type="checkbox" name="advance" value="1" style="width:auto" /> Mark Phase II complete &amp; move to Spawning</label>
+    </div>
+  </form>
+
+  <h3 style="margin-top:1.5rem">Conditioning Temperature / Ammonia Log</h3>
+  <div class="qc-legend">Target conditioning temp: <%= qcParam('phase2','temp_c')?.min_value %>&ndash;<%= qcParam('phase2','temp_c')?.max_value %>°C · ammonia below <%= qcParam('phase2','ammonia_ppm')?.max_value %>ppm before spawning</div>
+
+  <% if (readings.length) { %>
+    <div class="chart-wrap"><%- chart %></div>
+    <table>
+      <thead><tr><th>Date</th><th>Temp</th><th>Ammonia (ppm)</th><th>By</th><th>Notes</th><th></th></tr></thead>
+      <tbody>
+        <% readings.forEach(function(r) { %>
+          <tr>
+            <td><%= r.reading_date %></td>
+            <td><%- qcCell('phase2','temp_c', r.temp_c) %></td>
+            <td><%- qcCell('phase2','ammonia_ppm', r.ammonia_ppm) %></td>
+            <td><%= v(r.entered_by) %></td>
+            <td><%= v(r.notes) %></td>
+            <td>
+              <form method="post" action="/batches/<%= batch.id %>/phase2/readings/<%= r.id %>/delete" data-confirm="Delete this reading?">
+                <button class="btn small danger" type="submit">Del</button>
+              </form>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } else { %>
+    <div class="empty-state">No readings logged yet.</div>
+  <% } %>
+
+  <form class="grid" method="post" action="/batches/<%= batch.id %>/phase2/readings" style="margin-top:1rem">
+    <div class="field"><label>Date</label><input type="date" name="reading_date" /></div>
+    <div class="field"><label>Temp (°C)</label><input type="number" step="any" name="temp_c" /></div>
+    <div class="field"><label>Ammonia (ppm)</label><input type="number" step="any" name="ammonia_ppm" /></div>
+    <div class="field"><label>Entered By</label><input type="text" name="entered_by" /></div>
+    <div class="field wide"><label>Notes</label><input type="text" name="notes" /></div>
+    <div class="form-actions"><button class="btn" type="submit">Add Reading</button></div>
+  </form>
+</section>
+
+<%- include('../partials/footer') %>

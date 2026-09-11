@@ -1,0 +1,77 @@
+  </main>
+  <footer class="site">
+    <%= companyName %> internal use only.
+  </footer>
+
+  <!-- In-page confirmation for destructive actions. Deliberately NOT
+       window.confirm(): browsers let a user tick "prevent this page from
+       creating additional dialogs", after which confirm() silently returns
+       false forever and every delete button in the app stops working with no
+       error shown. Any form with data-confirm="..." routes through here. -->
+  <div id="confirm-modal" class="modal-backdrop" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="confirm-modal-text">
+      <p id="confirm-modal-text"></p>
+      <div class="modal-actions">
+        <button type="button" class="btn secondary" id="confirm-cancel">Cancel</button>
+        <button type="button" class="btn danger" id="confirm-ok">Delete</button>
+      </div>
+    </div>
+  </div>
+  <script>
+    // Cosmetic only: greys out controls on a stage the current role can't save.
+    // The real enforcement is the requirePermission guard on every POST route —
+    // this just avoids offering a Save button that would bounce with a 403.
+    (function () {
+      var main = document.querySelector('main[data-readonly]');
+      if (!main) return;
+      main.querySelectorAll('input, select, textarea, button').forEach(function (el) {
+        el.disabled = true;
+      });
+    })();
+
+    (function () {
+      var backdrop = document.getElementById('confirm-modal');
+      var text = document.getElementById('confirm-modal-text');
+      var okBtn = document.getElementById('confirm-ok');
+      var cancelBtn = document.getElementById('confirm-cancel');
+      var pending = null;
+
+      function close() {
+        backdrop.hidden = true;
+        pending = null;
+      }
+
+      // Capture phase, so this runs before any handler on the form itself.
+      document.addEventListener('submit', function (e) {
+        var form = e.target;
+        if (!form || !form.getAttribute) return;
+        var msg = form.getAttribute('data-confirm');
+        if (!msg || form.dataset.confirmed === '1') return;
+        e.preventDefault();
+        pending = form;
+        text.textContent = msg;
+        okBtn.textContent = form.getAttribute('data-confirm-label') || 'Delete';
+        backdrop.hidden = false;
+        okBtn.focus();
+      }, true);
+
+      okBtn.addEventListener('click', function () {
+        if (!pending) return;
+        var form = pending;
+        form.dataset.confirmed = '1';
+        close();
+        // .submit() bypasses submit handlers, so this can't re-trigger the modal.
+        form.submit();
+      });
+
+      cancelBtn.addEventListener('click', close);
+      backdrop.addEventListener('click', function (e) {
+        if (e.target === backdrop) close();
+      });
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && !backdrop.hidden) close();
+      });
+    })();
+  </script>
+</body>
+</html>

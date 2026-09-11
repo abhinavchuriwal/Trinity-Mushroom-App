@@ -1,0 +1,64 @@
+<% var title = batch.batch_code + ' · Harvest' %>
+<%- include('../partials/header') %>
+<%- include('../partials/batch-banner') %>
+
+<% if (!rooms.length) { %>
+  <div class="card">
+    <div class="empty-state">No rooms logged yet &mdash; add rooms on the Room In page first.</div>
+  </div>
+<% } %>
+
+<% rooms.forEach(function(room) { %>
+  <section class="card">
+    <h2>Room <%= room.room_no %></h2>
+    <div class="qc-legend">Room In: <%= room.room_in_date || '—' %></div>
+
+    <h3 style="margin-top:0.5rem">Harvest Log</h3>
+    <% if (room.harvests.length) { %>
+      <table>
+        <thead><tr><th>Date</th><th>A Grade (kg)</th><th>B Grade (kg)</th><th>By</th><th>Notes</th><th></th></tr></thead>
+        <tbody>
+          <% room.harvests.forEach(function(h) { %>
+            <tr>
+              <td><%= h.harvest_date %></td>
+              <td><%= v(h.grade_a_kg) %></td>
+              <td><%= v(h.grade_b_kg) %></td>
+              <td><%= v(h.entered_by) %></td>
+              <td><%= v(h.notes) %></td>
+              <td>
+                <form method="post" action="/batches/<%= batch.id %>/harvests/<%= h.id %>/delete" data-confirm="Delete this harvest entry?">
+                  <button class="btn small danger" type="submit">Del</button>
+                </form>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+      <div class="qc-legend" style="margin-top:0.5rem">
+        Room total: <strong><%= (room.gradeA + room.gradeB).toFixed(1) %> kg</strong> (A: <%= room.gradeA.toFixed(1) %> kg, B: <%= room.gradeB.toFixed(1) %> kg)
+      </div>
+    <% } else { %>
+      <div class="empty-state">No harvest entries yet for this room.</div>
+    <% } %>
+
+    <form class="grid" method="post" action="/batches/<%= batch.id %>/rooms/<%= room.id %>/harvests" style="margin-top:0.75rem">
+      <div class="field"><label>Harvest Date</label><input type="date" name="harvest_date" required /></div>
+      <div class="field"><label>A Grade (kg)</label><input type="number" step="any" name="grade_a_kg" /></div>
+      <div class="field"><label>B Grade (kg)</label><input type="number" step="any" name="grade_b_kg" /></div>
+      <div class="field"><label>Entered By</label><input type="text" name="entered_by" /></div>
+      <div class="field wide"><label>Notes</label><input type="text" name="notes" /></div>
+      <div class="form-actions"><button class="btn small" type="submit">Add Harvest Entry</button></div>
+    </form>
+  </section>
+<% }) %>
+
+<% if (rooms.length) { %>
+  <div class="card">
+    <form method="post" action="/batches/<%= batch.id %>/harvest-advance">
+      <label class="muted"><input type="checkbox" name="advance" value="1" style="width:auto" required /> Mark Harvest complete for this batch &amp; move to Room Out</label>
+      <div class="form-actions" style="margin-top:0.5rem"><button class="btn" type="submit">Continue to Room Out</button></div>
+    </form>
+  </div>
+<% } %>
+
+<%- include('../partials/footer') %>

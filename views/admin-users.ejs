@@ -1,0 +1,139 @@
+<% var title = 'Users & Roles' %>
+<%- include('partials/header') %>
+
+<h1>Settings</h1>
+<%- include('partials/settings-nav') %>
+
+<h2 style="margin-bottom:0.4rem">Users &amp; Roles</h2>
+<p class="muted">Roles carry the permissions; users are just assigned a role. Admin always has every permission and can't be edited here — that's a safety rail so the app can never lock itself out.</p>
+
+<% if (error) { %>
+  <p style="color:#c0392b; font-weight:600"><%= error %></p>
+<% } %>
+
+<%
+  function permChecklist(formId, checkedKeys) {
+    Object.keys(permissionGroups).forEach(function(group) {
+%>
+      <div style="margin-bottom:0.5rem">
+        <strong style="font-size:0.8rem; color:var(--gray-700)"><%= group %></strong><br/>
+        <% permissionGroups[group].forEach(function(p) { %>
+          <label style="display:inline-flex; align-items:center; gap:0.3rem; margin:0.2rem 0.9rem 0.2rem 0; font-weight:400; font-size:0.85rem">
+            <input form="<%= formId %>" type="checkbox" name="permissions" value="<%= p.key %>" style="width:auto" <%= checkedKeys.includes(p.key) ? 'checked' : '' %> />
+            <%= p.label %>
+          </label>
+        <% }) %>
+      </div>
+<%
+    });
+  }
+%>
+
+<div class="card">
+  <h2>Roles</h2>
+  <% roles.forEach(function(r) { %>
+    <form id="role-<%= r.id %>" method="post" action="/admin/roles/<%= r.id %>"></form>
+  <% }) %>
+  <% roles.forEach(function(r) { %>
+    <div style="border:1px solid var(--gray-300); border-radius:8px; padding:0.9rem; margin-bottom:0.9rem">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap">
+        <div>
+          <input form="role-<%= r.id %>" type="text" name="name" value="<%= r.name %>" style="font-weight:700; font-size:1rem; border:none; background:none; padding:0.1rem" <%= r.is_system ? 'disabled' : '' %> />
+          <span class="muted">· <%= r.userCount %> user<%= r.userCount === 1 ? '' : 's' %><%= r.is_system ? ' · system role' : '' %></span>
+        </div>
+        <% if (!r.is_system) { %>
+          <div>
+            <button form="role-<%= r.id %>" class="btn small" type="submit">Save</button>
+            <form method="post" action="/admin/roles/<%= r.id %>/delete" style="display:inline" data-confirm="Delete role <%= r.name %>?">
+              <button class="btn small danger" type="submit" <%- r.userCount ? 'disabled title="Reassign its users first"' : '' %>>Del</button>
+            </form>
+          </div>
+        <% } %>
+      </div>
+      <div style="margin-top:0.6rem">
+        <% if (r.is_system) { %>
+          <span class="muted">Every permission, always.</span>
+        <% } else { %>
+          <% permChecklist('role-' + r.id, r.permissions) %>
+        <% } %>
+      </div>
+    </div>
+  <% }) %>
+
+  <h3>Add Role</h3>
+  <form id="new-role-form" method="post" action="/admin/roles">
+    <div class="field" style="max-width:20rem; margin-bottom:0.6rem"><label>Role Name</label><input type="text" name="name" required /></div>
+    <% permChecklist('new-role-form', []) %>
+    <div class="form-actions"><button class="btn" type="submit">Add Role</button></div>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Users</h2>
+  <% users.forEach(function(u) { %>
+    <form id="user-<%= u.id %>" method="post" action="/admin/users/<%= u.id %>"></form>
+  <% }) %>
+  <div class="table-scroll">
+  <table class="settings-table">
+    <thead><tr><th>Username</th><th>Full Name</th><th>Role</th><th>Farm Access</th><th>New Password</th><th>Active</th><th>Save</th><th>Delete</th></tr></thead>
+    <tbody>
+      <% users.forEach(function(u) { %>
+        <% var fid = 'user-' + u.id %>
+        <tr style="<%= u.active ? '' : 'opacity:0.5' %>">
+          <td><%= u.username %><% if (currentUser.id === u.id) { %> <span class="muted">(you)</span><% } %></td>
+          <td><input form="<%= fid %>" type="text" name="full_name" value="<%= u.full_name || '' %>" style="width:9rem" /></td>
+          <td>
+            <select form="<%= fid %>" name="role_id" style="width:11rem">
+              <% roles.forEach(function(r) { %>
+                <option value="<%= r.id %>" <%= u.role_id === r.id ? 'selected' : '' %>><%= r.name %></option>
+              <% }) %>
+            </select>
+          </td>
+          <td>
+            <% farms.forEach(function(fm) { %>
+              <label style="display:block; font-weight:400; font-size:0.8rem; white-space:nowrap">
+                <input form="<%= fid %>" type="checkbox" name="farm_ids" value="<%= fm.id %>" style="width:auto" <%= u.farmIds.includes(fm.id) ? 'checked' : '' %> />
+                <%= fm.name %>
+              </label>
+            <% }) %>
+          </td>
+          <td><input form="<%= fid %>" type="password" name="password" placeholder="leave blank to keep" style="width:9rem" minlength="6" /></td>
+          <td><input form="<%= fid %>" type="checkbox" name="active" value="1" <%= u.active ? 'checked' : '' %> style="width:auto" /></td>
+          <td><button form="<%= fid %>" class="btn small" type="submit">Save</button></td>
+          <td>
+            <form method="post" action="/admin/users/<%= u.id %>/delete" data-confirm="Delete user <%= u.username %>?">
+              <button class="btn small danger" type="submit">Del</button>
+            </form>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+  </div>
+
+  <h3 style="margin-top:1rem">Add User</h3>
+  <form class="grid" method="post" action="/admin/users">
+    <div class="field"><label>Username</label><input type="text" name="username" required /></div>
+    <div class="field"><label>Full Name</label><input type="text" name="full_name" /></div>
+    <div class="field">
+      <label>Role</label>
+      <select name="role_id">
+        <% roles.forEach(function(r) { %><option value="<%= r.id %>"><%= r.name %></option><% }) %>
+      </select>
+    </div>
+    <div class="field"><label>Password (min. 6 characters)</label><input type="password" name="password" minlength="6" required /></div>
+    <div class="field wide">
+      <label>Farm Access</label>
+      <% farms.forEach(function(fm) { %>
+        <label style="display:inline-flex; align-items:center; gap:0.3rem; margin-right:1rem; font-weight:400; font-size:0.85rem">
+          <input type="checkbox" name="farm_ids" value="<%= fm.id %>" style="width:auto" <%= fm.is_training ? '' : 'checked' %> />
+          <%= fm.name %>
+        </label>
+      <% }) %>
+      <div class="muted">Tick only the Training farm for a new trainee &mdash; they then can't reach live production data at all.</div>
+    </div>
+    <div class="form-actions"><button class="btn" type="submit">Add User</button></div>
+  </form>
+</div>
+
+<%- include('partials/footer') %>

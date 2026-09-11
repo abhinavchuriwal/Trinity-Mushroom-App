@@ -1,0 +1,64 @@
+<% var title = batch.batch_code + ' · Casing' %>
+<%- include('../partials/header') %>
+<%- include('../partials/batch-banner') %>
+
+<section class="card">
+  <h2>Casing Soil Preparation</h2>
+  <div class="qc-legend">Target casing pH: <%= qcParam('casing','ph')?.min_value %>&ndash;<%= qcParam('casing','ph')?.max_value %> · moisture <%= qcParam('casing','moisture_pct')?.min_value %>&ndash;<%= qcParam('casing','moisture_pct')?.max_value %>% · layer thickness <%= qcParam('casing','layer_thickness_cm')?.min_value %>&ndash;<%= qcParam('casing','layer_thickness_cm')?.max_value %>cm · pasteurization temp <%= qcParam('casing','pasteurization_temp_c')?.min_value %>&ndash;<%= qcParam('casing','pasteurization_temp_c')?.max_value %>°C</div>
+  <form class="grid" method="post" action="/batches/<%= batch.id %>/casing">
+    <div class="field"><label>Prep Date</label><input type="date" name="prep_date" value="<%= v(row.prep_date) %>" /></div>
+    <div class="field">
+      <label>Application Date (In)</label>
+      <input type="date" name="application_date" value="<%= v(row.application_date) %>" />
+    </div>
+    <div class="field">
+      <label>End Date (Out)</label>
+      <input type="date" name="end_date" value="<%= v(row.end_date) %>" />
+    </div>
+    <div class="field">
+      <label>Days</label>
+      <input type="text" value="<%= daysLabel(days) %>" disabled />
+    </div>
+    <div class="field wide"><label>Casing Material</label><input type="text" name="casing_material" value="<%= v(row.casing_material) %>" placeholder="e.g. peat + chalk 3:1, or cocopeat + FYM + sand" /></div>
+    <div class="field"><label>Quantity (kg)</label><input type="number" step="any" name="quantity_kg" value="<%= v(row.quantity_kg) %>" /></div>
+    <div class="field"><label>Chalk / Lime (kg)</label><input type="number" step="any" name="chalk_kg" value="<%= v(row.chalk_kg) %>" /></div>
+    <div class="field">
+      <label>pH</label>
+      <input type="number" step="any" name="ph" value="<%= v(row.ph) %>" />
+      <%- qcCell('casing','ph', row.ph) %>
+    </div>
+    <div class="field">
+      <label>Moisture (%)</label>
+      <input type="number" step="any" name="moisture_pct" value="<%= v(row.moisture_pct) %>" />
+      <%- qcCell('casing','moisture_pct', row.moisture_pct) %>
+    </div>
+    <div class="field">
+      <label>Pasteurized?</label>
+      <select name="pasteurized">
+        <option value="" <%= !row.pasteurized ? 'selected' : '' %>>—</option>
+        <option value="yes" <%= row.pasteurized === 'yes' ? 'selected' : '' %>>Yes</option>
+        <option value="no" <%= row.pasteurized === 'no' ? 'selected' : '' %>>No</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Pasteurization Temp (°C)</label>
+      <input type="number" step="any" name="pasteurization_temp_c" value="<%= v(row.pasteurization_temp_c) %>" />
+      <%- qcCell('casing','pasteurization_temp_c', row.pasteurization_temp_c) %>
+    </div>
+    <div class="field"><label>Pasteurization Duration (hrs)</label><input type="number" step="any" name="pasteurization_duration_hrs" value="<%= v(row.pasteurization_duration_hrs) %>" /></div>
+    <div class="field">
+      <label>Layer Thickness (cm)</label>
+      <input type="number" step="any" name="layer_thickness_cm" value="<%= v(row.layer_thickness_cm) %>" />
+      <%- qcCell('casing','layer_thickness_cm', row.layer_thickness_cm) %>
+    </div>
+    <div class="field"><label>Room</label><select name="room_id"><%- optionsFor(growingRooms, row.room_id) %></select></div>
+    <div class="field"><label>Entered By</label><input type="text" name="entered_by" value="<%= v(row.entered_by) %>" /></div>
+    <div class="field wide"><label>Notes</label><textarea name="notes"><%= v(row.notes) %></textarea></div>
+    <div class="form-actions">
+      <button class="btn" type="submit">Save Casing Data</button>
+      <label class="muted"><input type="checkbox" name="advance" value="1" style="width:auto" /> Mark casing complete &amp; move to Room In</label>
+    </div>
+  </form>
+</section>
+
+<%- include('../partials/footer') %>

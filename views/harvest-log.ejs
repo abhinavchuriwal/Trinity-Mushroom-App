@@ -1,0 +1,68 @@
+<% var title = 'Log Harvest' %>
+<%- include('partials/header') %>
+
+<h1>Log Harvest</h1>
+<p class="muted">Fast entry across every room currently occupied, no matter which batch it belongs to. For per-room history, price-free totals, or Room Out, use that batch's own Harvest page.</p>
+
+<% if (error) { %>
+  <p style="color:#c0392b; font-weight:600"><%= error %></p>
+<% } %>
+
+<div class="card">
+  <h2>Add a Pick</h2>
+  <% if (!can('edit_harvest')) { %>
+    <div class="empty-state">Your role doesn't have harvest edit access.</div>
+  <% } else if (!activeRooms.length) { %>
+    <div class="empty-state">No rooms are currently occupied (Room In without a Room Out date yet). Once a batch reaches Room In, its room shows up here.</div>
+  <% } else { %>
+    <form class="grid" method="post" action="/harvest-log">
+      <div class="field wide">
+        <label>Room</label>
+        <select name="room_id" required>
+          <option value="">— Select —</option>
+          <% activeRooms.forEach(function(r) { %>
+            <option value="<%= r.id %>"><%= r.room_no %> — <%= r.batch_code %> (in <%= r.room_in_date %>)</option>
+          <% }) %>
+        </select>
+      </div>
+      <div class="field"><label>Date</label><input type="date" name="harvest_date" value="<%= today %>" required /></div>
+      <div class="field"><label>A Grade (kg)</label><input type="number" step="any" name="grade_a_kg" /></div>
+      <div class="field"><label>B Grade (kg)</label><input type="number" step="any" name="grade_b_kg" /></div>
+      <div class="field"><label>Entered By</label><input type="text" name="entered_by" /></div>
+      <div class="field wide"><label>Notes</label><input type="text" name="notes" /></div>
+      <div class="form-actions"><button class="btn" type="submit">Log Harvest</button></div>
+    </form>
+  <% } %>
+</div>
+
+<div class="card">
+  <h2>Today's Entries (<%= today %>)</h2>
+  <% if (!todayEntries.length) { %>
+    <div class="empty-state">Nothing logged yet today.</div>
+  <% } else { %>
+    <table>
+      <thead><tr><th>Room</th><th>Batch</th><th>A Grade (kg)</th><th>B Grade (kg)</th><th>By</th><th>Notes</th><th></th></tr></thead>
+      <tbody>
+        <% todayEntries.forEach(function(h) { %>
+          <tr>
+            <td><%= h.room_no %></td>
+            <td><a href="/batches/<%= h.batch_id %>/harvest"><%= h.batch_code %></a></td>
+            <td><%= v(h.grade_a_kg) %></td>
+            <td><%= v(h.grade_b_kg) %></td>
+            <td><%= v(h.entered_by) %></td>
+            <td><%= v(h.notes) %></td>
+            <td>
+              <% if (can('edit_harvest')) { %>
+                <form method="post" action="/harvest-log/<%= h.id %>/delete" data-confirm="Delete this entry?">
+                  <button class="btn small danger" type="submit">Del</button>
+                </form>
+              <% } %>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+</div>
+
+<%- include('partials/footer') %>

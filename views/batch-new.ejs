@@ -1,0 +1,194 @@
+<% var title = 'New Batch' %>
+<%- include('partials/header') %>
+
+<h1>Start a New Batch</h1>
+
+<div class="card">
+  <% if (error) { %>
+    <p style="color:#c0392b; font-weight:600; margin-top:0"><%= error %></p>
+  <% } %>
+  <form class="grid" method="post" action="/batches" id="new-batch-form">
+    <div class="field">
+      <label for="start_date">Start Date</label>
+      <input type="date" id="start_date" name="start_date" value="<%= start_date %>" required />
+    </div>
+    <div class="field">
+      <label for="batch_no">Batch Number</label>
+      <input type="text" id="batch_no" name="batch_no" value="<%= batch_no %>" placeholder="e.g. 001" required />
+    </div>
+    <div class="field wide">
+      <label>Batch Code Preview</label>
+      <input type="text" id="preview" value="<%= prefix %>-<%= fy %>-<%= batch_no %>" disabled />
+    </div>
+    <div class="field wide">
+      <label for="notes">Notes (optional)</label>
+      <textarea id="notes" name="notes" placeholder="e.g. special conditions"><%= notes %></textarea>
+    </div>
+
+    <div class="field wide">
+      <h3 style="margin-top:0.5rem">Raw Material Recipe (Dry Weight)</h3>
+      <div class="qc-legend">
+        Enter tested Carbon %/Nitrogen % if you have lab data for this delivery &mdash; otherwise leave blank and the material's standard % (set in Raw Materials) is used automatically for the C:N calculation.
+      </div>
+      <div class="chart-wrap">
+        <table id="recipe-table">
+          <thead>
+            <tr>
+              <th style="min-width:12rem">Material</th>
+              <th>Qty (kg)</th>
+              <th>Cost (NPR/kg)</th>
+              <th>Amount (NPR)</th>
+              <th>Carbon % (actual)</th>
+              <th>Nitrogen % (actual)</th>
+              <th>Notes</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="recipe-body"></tbody>
+        </table>
+      </div>
+      <button type="button" class="btn secondary small" id="add-row-btn" style="margin-top:0.5rem">+ Add Material</button>
+
+      <div class="qc-legend" style="margin-top:0.75rem">
+        Total dry weight: <strong id="sum-kg">0 kg</strong>
+        &nbsp;·&nbsp; Total recipe cost: <strong id="sum-cost">NPR 0</strong>
+        &nbsp;·&nbsp; Cost per kg compost mix: <strong id="sum-perkg">&mdash;</strong>
+        &nbsp;·&nbsp; Batch C:N ratio (estimate): <strong id="sum-cn">&mdash;</strong>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button class="btn" type="submit">Create Batch</button>
+      <a class="muted" href="/">Cancel</a>
+    </div>
+  </form>
+</div>
+<p class="muted">Batch code format: <strong><%= prefix %>-Nepali Fiscal Year-Your Number</strong> (e.g. <%= prefix %>-<%= fy %>-001). The fiscal year is computed from the start date (Shrawan&ndash;Ashadh). Your batch number just needs to be unique within that fiscal year.</p>
+
+<script id="material-options" type="application/json">
+  <%- JSON.stringify(rawMaterials.map(function(m){ return {id: m.id, name: m.name, cost: m.default_cost_per_kg_npr, carbon: m.carbon_pct, nitrogen: m.nitrogen_pct}; })) %>
+</script>
+
+<script>
+(function () {
+  var materials = JSON.parse(document.getElementById('material-options').textContent);
+  var tbody = document.getElementById('recipe-body');
+  var rowCount = 0;
+
+  function materialOptionsHtml() {
+    var html = '<option value="">Other / not listed&hellip;</option>';
+    materials.forEach(function (m) {
+      html += '<option value="' + m.id + '">' + m.name + '</option>';
+    });
+    return html;
+  }
+
+  function addRow() {
+    var idx = rowCount++;
+    var tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td>' +
+        '<select name="raw_material_id[]" class="mat-select">' + materialOptionsHtml() + '</select>' +
+        '<input type="text" name="material_name[]" class="mat-name" placeholder="Material name" style="margin-top:0.3rem; display:none" />' +
+      '</td>' +
+      '<td><input type="number" step="any" name="qty_kg[]" class="qty-input" style="width:6rem" /></td>' +
+      '<td><input type="number" step="any" name="cost_per_kg_npr[]" class="cost-input" style="width:6rem" /></td>' +
+      '<td class="amount-cell muted">&mdash;</td>' +
+      '<td><input type="number" step="any" name="carbon_pct_actual[]" class="carbon-input" style="width:5.5rem" placeholder="std" /></td>' +
+      '<td><input type="number" step="any" name="nitrogen_pct_actual[]" class="nitrogen-input" style="width:5.5rem" placeholder="std" /></td>' +
+      '<td><input type="text" name="item_notes[]" style="width:8rem" /></td>' +
+      '<td><button type="button" class="btn small danger remove-row">Del</button></td>';
+    tbody.appendChild(tr);
+
+    var select = tr.querySelector('.mat-select');
+    var nameInput = tr.querySelector('.mat-name');
+    var costInput = tr.querySelector('.cost-input');
+    var carbonInput = tr.querySelector('.carbon-input');
+    var nitrogenInput = tr.querySelector('.nitrogen-input');
+
+    select.addEventListener('change', function () {
+      var m = materials.filter(function (m) { return String(m.id) === select.value; })[0];
+      if (m) {
+        nameInput.style.display = 'none';
+        nameInput.value = '';
+        costInput.value = m.cost !== null ? m.cost : '';
+        carbonInput.placeholder = m.carbon !== null ? 'std: ' + m.carbon : 'std';
+        nitrogenInput.placeholder = m.nitrogen !== null ? 'std: ' + m.nitrogen : 'std';
+      } else {
+        nameInput.style.display = '';
+        carbonInput.placeholder = 'std';
+        nitrogenInput.placeholder = 'std';
+      }
+      recalc();
+    });
+
+    tr.querySelector('.remove-row').addEventListener('click', function () {
+      tr.remove();
+      recalc();
+    });
+
+    tr.querySelectorAll('.qty-input, .cost-input, .carbon-input, .nitrogen-input').forEach(function (el) {
+      el.addEventListener('input', recalc);
+    });
+  }
+
+  function recalc() {
+    var totalKg = 0, totalCost = 0, hasCost = false, carbonW = 0, nitrogenW = 0;
+    tbody.querySelectorAll('tr').forEach(function (tr) {
+      var qty = parseFloat(tr.querySelector('.qty-input').value) || 0;
+      var cost = tr.querySelector('.cost-input').value;
+      var select = tr.querySelector('.mat-select');
+      var m = materials.filter(function (m) { return String(m.id) === select.value; })[0];
+      var carbonActual = tr.querySelector('.carbon-input').value;
+      var nitrogenActual = tr.querySelector('.nitrogen-input').value;
+      var carbon = carbonActual !== '' ? parseFloat(carbonActual) : (m && m.carbon !== null ? m.carbon : null);
+      var nitrogen = nitrogenActual !== '' ? parseFloat(nitrogenActual) : (m && m.nitrogen !== null ? m.nitrogen : null);
+
+      totalKg += qty;
+      var amountCell = tr.querySelector('.amount-cell');
+      if (cost !== '' && qty) {
+        var amount = qty * parseFloat(cost);
+        totalCost += amount;
+        hasCost = true;
+        amountCell.textContent = 'NPR ' + amount.toLocaleString('en-IN', { maximumFractionDigits: 2 });
+      } else {
+        amountCell.textContent = '—';
+      }
+      if (carbon !== null && !isNaN(carbon)) carbonW += qty * carbon;
+      if (nitrogen !== null && !isNaN(nitrogen)) nitrogenW += qty * nitrogen;
+    });
+
+    document.getElementById('sum-kg').textContent = totalKg ? totalKg.toLocaleString('en-IN') + ' kg' : '0 kg';
+    document.getElementById('sum-cost').textContent = hasCost ? 'NPR ' + totalCost.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : 'NPR 0';
+    document.getElementById('sum-perkg').textContent = (hasCost && totalKg) ? 'NPR ' + (totalCost / totalKg).toLocaleString('en-IN', { maximumFractionDigits: 2 }) + '/kg' : '—';
+    document.getElementById('sum-cn').textContent = nitrogenW > 0 ? (carbonW / nitrogenW).toFixed(1) + ':1' : '—';
+  }
+
+  document.getElementById('add-row-btn').addEventListener('click', addRow);
+  addRow();
+
+  // Live batch-code preview: recompute the Nepali fiscal year as the date changes.
+  var dateEl = document.getElementById('start_date');
+  var noEl = document.getElementById('batch_no');
+  var preview = document.getElementById('preview');
+  var prefix = <%- JSON.stringify(prefix) %>;
+  var currentFy = <%- JSON.stringify(fy) %>;
+
+  function updatePreview() {
+    preview.value = prefix + '-' + (currentFy || '----/--') + '-' + (noEl.value || '');
+  }
+  var fyFetchTimer;
+  dateEl.addEventListener('change', function () {
+    clearTimeout(fyFetchTimer);
+    fyFetchTimer = setTimeout(function () {
+      fetch('/api/nepali-fy?date=' + encodeURIComponent(dateEl.value))
+        .then(function (r) { return r.json(); })
+        .then(function (data) { currentFy = data.fy; updatePreview(); })
+        .catch(function () {});
+    }, 150);
+  });
+  noEl.addEventListener('input', updatePreview);
+})();
+</script>
+
+<%- include('partials/footer') %>

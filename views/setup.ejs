@@ -1,0 +1,33 @@
+<% var title = 'Initial Setup' %>
+<%- include('partials/header') %>
+
+<div class="auth-page">
+  <div class="card">
+    <h1>Welcome — Set Up the Admin Account</h1>
+    <p class="muted">No users exist yet. Create the first account — it gets full Admin access, including managing every other user and role afterward.</p>
+    <% if (error) { %>
+      <p style="color:#c0392b; font-weight:600"><%= error %></p>
+    <% } %>
+    <form method="post" action="/setup">
+      <div class="field" style="margin-bottom:0.75rem">
+        <label>Full Name</label>
+        <input type="text" name="full_name" value="<%= full_name %>" />
+      </div>
+      <div class="field" style="margin-bottom:0.75rem">
+        <label>Username</label>
+        <input type="text" name="username" value="<%= username %>" autofocus required />
+      </div>
+      <div class="field" style="margin-bottom:0.75rem">
+        <label>Password (min. 6 characters)</label>
+        <input type="password" name="password" minlength="6" required />
+      </div>
+      <div class="field" style="margin-bottom:0.75rem">
+        <label>Confirm Password</label>
+        <input type="password" name="confirm_password" minlength="6" required />
+      </div>
+      <div class="form-actions"><button class="btn" type="submit">Create Admin Account</button></div>
+    </form>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

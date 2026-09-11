@@ -1,0 +1,71 @@
+<% var title = batch.batch_code + ' · Spawning' %>
+<%- include('../partials/header') %>
+<%- include('../partials/batch-banner') %>
+
+<section class="card">
+  <h2>Spawning</h2>
+  <div class="qc-legend">Target compost temp at spawning: <%= qcParam('spawning','compost_temp_c')?.min_value %>&ndash;<%= qcParam('spawning','compost_temp_c')?.max_value %>°C · spawn rate <%= qcParam('spawning','spawn_rate_pct')?.min_value %>&ndash;<%= qcParam('spawning','spawn_rate_pct')?.max_value %>%</div>
+  <form class="grid" method="post" action="/batches/<%= batch.id %>/spawning">
+    <div class="field">
+      <label>Spawning Date (In)</label>
+      <input type="date" name="spawning_date" value="<%= v(row.spawning_date) %>" />
+    </div>
+    <div class="field">
+      <label>Spawn Run End Date (Out)</label>
+      <input type="date" name="spawn_run_end_date" value="<%= v(row.spawn_run_end_date) %>" />
+    </div>
+    <div class="field">
+      <label>Days</label>
+      <input type="text" value="<%= daysLabel(days) %>" disabled />
+    </div>
+    <div class="field"><label>Spawn Strain</label><input type="text" name="spawn_strain" value="<%= v(row.spawn_strain) %>" /></div>
+    <div class="field">
+      <label>Spawn Rate (%)</label>
+      <input type="number" step="any" name="spawn_rate_pct" value="<%= v(row.spawn_rate_pct) %>" />
+      <%- qcCell('spawning','spawn_rate_pct', row.spawn_rate_pct) %>
+    </div>
+    <div class="field">
+      <label>Spawning Method</label>
+      <select name="spawning_method">
+        <option value="">—</option>
+        <option value="surface" <%= row.spawning_method === 'surface' ? 'selected' : '' %>>Surface</option>
+        <option value="through_mix" <%= row.spawning_method === 'through_mix' ? 'selected' : '' %>>Through-mix</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Compost Temp at Spawning (°C)</label>
+      <input type="number" step="any" name="compost_temp_c" value="<%= v(row.compost_temp_c) %>" />
+      <%- qcCell('spawning','compost_temp_c', row.compost_temp_c) %>
+    </div>
+    <div class="field"><label>Room</label><select name="room_id"><%- optionsFor(growingRooms, row.room_id) %></select></div>
+    <div class="field"><label>No. of Bags</label><input type="number" id="num-bags" name="num_bags" value="<%= v(row.num_bags) %>" /></div>
+    <div class="field"><label>Kg per Bag</label><input type="number" step="any" id="kg-per-bag" name="kg_per_bag" value="<%= v(row.kg_per_bag) %>" /></div>
+    <div class="field">
+      <label>Total Fill Weight (kg)</label>
+      <input type="text" id="fill-weight-display" value="<%= row.fill_weight_kg !== null && row.fill_weight_kg !== undefined ? row.fill_weight_kg + ' kg' : '—' %>" disabled />
+    </div>
+    <div class="field"><label>Entered By</label><input type="text" name="entered_by" value="<%= v(row.entered_by) %>" /></div>
+    <div class="field wide"><label>Notes</label><textarea name="notes"><%= v(row.notes) %></textarea></div>
+    <div class="form-actions">
+      <button class="btn" type="submit">Save Spawning Data</button>
+      <label class="muted"><input type="checkbox" name="advance" value="1" style="width:auto" /> Mark spawning complete &amp; move to Casing</label>
+    </div>
+  </form>
+</section>
+
+<script>
+  (function () {
+    var bagsEl = document.getElementById('num-bags');
+    var kgEl = document.getElementById('kg-per-bag');
+    var display = document.getElementById('fill-weight-display');
+    function recalc() {
+      var bags = parseFloat(bagsEl.value);
+      var kg = parseFloat(kgEl.value);
+      display.value = (bags && kg) ? (bags * kg).toLocaleString('en-IN') + ' kg' : '—';
+    }
+    bagsEl.addEventListener('input', recalc);
+    kgEl.addEventListener('input', recalc);
+  })();
+</script>
+
+<%- include('../partials/footer') %>

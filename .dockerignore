@@ -1,0 +1,7 @@
+node_modules
+.git
+.claude
+.DS_Store
+*.db
+*.db-wal
+*.db-shm

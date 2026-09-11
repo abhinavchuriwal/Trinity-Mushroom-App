@@ -1,0 +1,80 @@
+<% var title = batch.batch_code + ' · Pre-Wetting' %>
+<%- include('../partials/header') %>
+<%- include('../partials/batch-banner') %>
+
+<section class="card">
+  <h2>Raw Material Recipe</h2>
+  <p class="muted">Entered when this batch was created. Not editable here beyond removing a mistaken line &mdash; to add more materials, do it from the New Batch flow next time.</p>
+
+  <% if (intakeItems.length) { %>
+    <table>
+      <thead>
+        <tr><th>Material</th><th>Dry Kg</th><th>Cost/kg</th><th>Amount</th><th>Carbon % (used)</th><th>Nitrogen % (used)</th><th>Notes</th><th></th></tr>
+      </thead>
+      <tbody>
+        <% intakeItems.forEach(function(it) {
+             var carbonUsed = it.carbon_pct_actual !== null ? it.carbon_pct_actual : it.carbon_pct_standard;
+             var nitrogenUsed = it.nitrogen_pct_actual !== null ? it.nitrogen_pct_actual : it.nitrogen_pct_standard;
+        %>
+          <tr>
+            <td><%= it.material_name %></td>
+            <td><%= it.qty_kg %></td>
+            <td><%= it.cost_per_kg_npr !== null ? npr(it.cost_per_kg_npr) : '—' %></td>
+            <td><%= it.cost_per_kg_npr !== null ? npr(it.qty_kg * it.cost_per_kg_npr) : '—' %></td>
+            <td><%= v(carbonUsed) %> <% if (it.carbon_pct_actual !== null) { %><span class="muted">(actual)</span><% } else if (carbonUsed !== null) { %><span class="muted">(std)</span><% } %></td>
+            <td><%= v(nitrogenUsed) %> <% if (it.nitrogen_pct_actual !== null) { %><span class="muted">(actual)</span><% } else if (nitrogenUsed !== null) { %><span class="muted">(std)</span><% } %></td>
+            <td><%= v(it.notes) %></td>
+            <td>
+              <form method="post" action="/batches/<%= batch.id %>/intake/items/<%= it.id %>/delete" data-confirm="Remove this item?">
+                <button class="btn small danger" type="submit">Del</button>
+              </form>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } else { %>
+    <div class="empty-state">No raw materials were recorded for this batch.</div>
+  <% } %>
+
+  <div class="qc-legend" style="margin-top:1rem">
+    Total dry weight: <strong><%= intakeSummary.totalDryKg !== null ? intakeSummary.totalDryKg + ' kg' : '—' %></strong>
+    &nbsp;·&nbsp; Total recipe cost: <strong><%= npr(intakeSummary.totalCostNpr) %></strong>
+    &nbsp;·&nbsp; Cost per kg compost mix: <strong><%= intakeSummary.costPerKgCompost !== null ? npr(intakeSummary.costPerKgCompost) + '/kg' : '—' %></strong>
+    &nbsp;·&nbsp; Batch C:N ratio: <strong><%- qcCell('intake', 'cn_ratio', intakeSummary.cnRatio !== null ? intakeSummary.cnRatio.toFixed(1) : null) %></strong>
+    <span class="muted">(target <%= qcParam('intake','cn_ratio')?.min_value %>&ndash;<%= qcParam('intake','cn_ratio')?.max_value %>:1)</span>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Pre-Wetting</h2>
+  <p class="muted">Raw material is soaked/wetted to raise moisture before being piled for Phase I composting.</p>
+  <form class="grid" method="post" action="/batches/<%= batch.id %>/prewetting">
+    <div class="field">
+      <label>In Date</label>
+      <input type="date" name="in_date" value="<%= v(row.in_date) %>" />
+    </div>
+    <div class="field">
+      <label>Out Date</label>
+      <input type="date" name="out_date" value="<%= v(row.out_date) %>" />
+    </div>
+    <div class="field">
+      <label>Days</label>
+      <input type="text" value="<%= daysLabel(days) %>" disabled />
+    </div>
+    <div class="field">
+      <label>Entered By</label>
+      <input type="text" name="entered_by" value="<%= v(row.entered_by) %>" />
+    </div>
+    <div class="field wide">
+      <label>Notes</label>
+      <textarea name="notes"><%= v(row.notes) %></textarea>
+    </div>
+    <div class="form-actions">
+      <button class="btn" type="submit">Save Pre-Wetting Data</button>
+      <label class="muted"><input type="checkbox" name="advance" value="1" style="width:auto" /> Mark Pre-Wetting complete &amp; move to Phase I</label>
+    </div>
+  </form>
+</section>
+
+<%- include('../partials/footer') %>

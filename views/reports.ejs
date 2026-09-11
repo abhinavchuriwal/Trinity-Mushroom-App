@@ -1,0 +1,143 @@
+<% var title = 'Reports' %>
+<%- include('partials/header') %>
+
+<div class="toolbar">
+  <h1>Reports <span class="muted" style="font-size:0.95rem; font-weight:400">· <%= currentFarm.name %></span></h1>
+  <% if (can('export_data')) { %><a class="btn secondary" href="/reports/export.csv">Download CSV</a><% } %>
+</div>
+
+<% if (fiscalYears.length > 1 || fy) { %>
+  <div class="settings-nav">
+    <a href="/reports" class="<%= fy ? '' : 'active' %>">All years</a>
+    <% fiscalYears.forEach(function(y) { %>
+      <a href="/reports?fy=<%= encodeURIComponent(y) %>" class="<%= fy === y ? 'active' : '' %>">FY <%= y %></a>
+    <% }) %>
+  </div>
+<% } %>
+
+<% if (byFiscalYear.length > 1) { %>
+<div class="card">
+  <h2>Fiscal Year Comparison</h2>
+  <p class="muted">Nepali fiscal years (Shrawan&ndash;Ashadh), derived from each batch's start date. Every year stays side by side, so you can see whether this year is actually better than last.</p>
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr><th>Fiscal Year</th><th>Batches</th><th>Raw Material Cost</th><th>Harvest kg</th><th>Avg Yield %</th><th>Avg A Grade %</th><th>Avg A-Grade Efficiency</th><th>QC Flags</th></tr>
+      </thead>
+      <tbody>
+        <% byFiscalYear.forEach(function(y) { %>
+          <tr>
+            <td><a href="/reports?fy=<%= encodeURIComponent(y.fy) %>"><strong><%= y.fy %></strong></a></td>
+            <td><%= y.batchCount %></td>
+            <td><%= npr(y.totalCost) %></td>
+            <td><%= y.totalHarvestKg ? y.totalHarvestKg.toFixed(1) : '—' %></td>
+            <td><%= y.avgYield !== null ? y.avgYield.toFixed(1) + '%' : '—' %></td>
+            <td><%= y.avgAGradeYield !== null ? y.avgAGradeYield.toFixed(1) + '%' : '—' %></td>
+            <td><%= y.avgEfficiency !== null ? y.avgEfficiency.toFixed(2) : '—' %></td>
+            <td><%= y.totalFlags || '—' %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</div>
+<% } %>
+
+<div class="card">
+  <h2><%= fy ? 'FY ' + fy + ' Summary' : 'Fleet Summary' %></h2>
+  <div class="qc-legend">
+    <%= fleetSummary.batchCount %> batch<%= fleetSummary.batchCount === 1 ? '' : 'es' %> total
+    &nbsp;·&nbsp; Average yield: <strong><%= fleetSummary.avgYield !== null ? fleetSummary.avgYield.toFixed(1) + '%' : '—' %></strong>
+    &nbsp;·&nbsp; Total raw material cost: <strong><%= npr(fleetSummary.totalCost) %></strong>
+    &nbsp;·&nbsp; Average A-Grade Efficiency Ratio: <strong><%= fleetSummary.avgEfficiency !== null ? fleetSummary.avgEfficiency.toFixed(2) + ' kg per NPR 1,000' : '—' %></strong>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Batch Comparison</h2>
+  <% if (!metrics.length) { %>
+    <div class="empty-state">No batches yet.</div>
+  <% } else { %>
+    <%
+      function sortLink(field, label) {
+        var newDir = (sort === field && dir === 'desc') ? 'asc' : 'desc';
+        var arrow = sort === field ? (dir === 'desc' ? ' ↓' : ' ↑') : '';
+        return '<a href="/reports?sort=' + field + '&dir=' + newDir + '">' + label + arrow + '</a>';
+      }
+    %>
+    <div class="chart-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th><%- sortLink('batch_code', 'Batch') %></th>
+            <th>Status</th>
+            <th><%- sortLink('start_date', 'Start') %></th>
+            <th><%- sortLink('days', 'Days') %></th>
+            <th><%- sortLink('cn_ratio', 'C:N') %></th>
+            <th><%- sortLink('cost', 'Cost') %></th>
+            <th><%- sortLink('compost_kg', 'Compost kg') %></th>
+            <th><%- sortLink('harvest_kg', 'Harvest kg') %></th>
+            <th><%- sortLink('yield_pct', 'Yield %') %></th>
+            <th><%- sortLink('a_grade_pct', 'A Grade %') %></th>
+            <th><%- sortLink('efficiency', 'A-Grade Efficiency') %></th>
+            <th><%- sortLink('flags', 'QC Flags') %></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% metrics.forEach(function(m) { %>
+            <tr onclick="window.location='/batches/<%= m.batch.id %>'" style="cursor:pointer">
+              <td class="batch-code"><%= m.batch.batch_code %></td>
+              <td><span class="status-pill status-<%= m.batch.status %>"><%= m.batch.status === 'completed' ? 'Completed' : 'In Progress' %></span></td>
+              <td><%= m.batch.start_date %></td>
+              <td><%= m.totalDays !== null ? m.totalDays : '—' %></td>
+              <td><%= m.intake.cnRatio !== null ? m.intake.cnRatio.toFixed(1) : '—' %></td>
+              <td><%= npr(m.totalCost) %></td>
+              <td><%= m.totalCompostKg !== null ? m.totalCompostKg.toFixed(0) : '—' %></td>
+              <td><%= m.totalHarvestKg ? m.totalHarvestKg.toFixed(1) : '—' %></td>
+              <td><%= m.yieldPct !== null ? m.yieldPct.toFixed(1) + '%' : '—' %></td>
+              <td><%= m.aGradeYieldPct !== null ? m.aGradeYieldPct.toFixed(1) + '%' : '—' %></td>
+              <td><%= m.aGradeEfficiency !== null ? m.aGradeEfficiency.toFixed(2) : '—' %></td>
+              <td><%= m.flags.length || '—' %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</div>
+
+<div class="card">
+  <h2>Why Yield Varies Across Batches</h2>
+  <p class="muted">Compares your completed batches' recipe and process parameters against each other and against QC targets to explain performance differences.</p>
+  <div id="fleet-analysis">
+    <button type="button" class="btn small secondary" id="fleet-analysis-btn">Generate Analysis</button>
+  </div>
+</div>
+
+<script>
+  function runFleetAnalysis() {
+    var container = document.getElementById('fleet-analysis');
+    container.innerHTML = '<div class="muted">Analyzing&hellip;</div>';
+    fetch('/reports/analysis')
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.error) {
+          container.innerHTML = '<div class="muted">Could not generate analysis: ' + data.error + '</div>';
+          return;
+        }
+        var badge = data.source === 'ai'
+          ? '<span class="stage-pill">AI-generated (Claude)</span>'
+          : '<span class="stage-pill">Rule-based analysis</span>';
+        var html = badge + '<p style="white-space:pre-line; margin-top:0.5rem">' + data.text.replace(/</g, '&lt;') + '</p>';
+        html += '<button type="button" class="btn small secondary" id="fleet-analysis-btn">Regenerate</button>';
+        container.innerHTML = html;
+        document.getElementById('fleet-analysis-btn').addEventListener('click', runFleetAnalysis);
+      })
+      .catch(function (err) {
+        container.innerHTML = '<div class="muted">Request failed: ' + err.message + '</div>';
+      });
+  }
+  document.getElementById('fleet-analysis-btn').addEventListener('click', runFleetAnalysis);
+</script>
+
+<%- include('partials/footer') %>

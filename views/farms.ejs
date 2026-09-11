@@ -1,0 +1,59 @@
+<% var title = 'Farms' %>
+<%- include('partials/header') %>
+
+<h1>Settings</h1>
+<%- include('partials/settings-nav') %>
+
+<h2 style="margin-bottom:0.4rem">Farms &amp; Training Data</h2>
+<p class="muted">A farm is a separate workspace for batches. The <strong>Training</strong> farm is for practice and onboarding &mdash; its batches never appear on the real farm's Dashboard, Reports or exports, and it can be wiped clean at any time. Rooms, tunnels, bunkers, raw materials and QC ranges are shared company-wide on purpose, so training runs against your real codes and real QC targets.</p>
+
+<% if (error) { %>
+  <p style="color:#c0392b; font-weight:600"><%= error %></p>
+<% } %>
+<% if (wiped !== null) { %>
+  <p style="color:#547722; font-weight:600">Training data wiped &mdash; <%= wiped %> batch<%= String(wiped) === '1' ? '' : 'es' %> and all their stage data removed.</p>
+<% } %>
+
+<div class="card">
+  <h2>Farms</h2>
+  <div class="table-scroll">
+    <table class="settings-table">
+      <thead><tr><th>Farm</th><th>Batch Code Prefix</th><th>Type</th><th>Batches</th><th></th></tr></thead>
+      <tbody>
+        <% farms.forEach(function(f) { %>
+          <tr>
+            <td>
+              <strong><%= f.name %></strong>
+              <% if (currentFarm.id === f.id) { %> <span class="stage-pill">current</span><% } %>
+            </td>
+            <td><code><%= f.code_prefix %>-</code></td>
+            <td><%= f.is_training ? 'Training / practice' : 'Live production' %></td>
+            <td><%= f.batchCount %></td>
+            <td><%= f.is_training ? '' : '—' %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<% farms.filter(function(f) { return f.is_training }).forEach(function(f) { %>
+  <div class="card" style="border-color:var(--red-600)">
+    <h2>Reset &ldquo;<%= f.name %>&rdquo;</h2>
+    <p class="muted">Permanently deletes all <strong><%= f.batchCount %></strong> batch<%= f.batchCount === 1 ? '' : 'es' %> in this training farm, along with every stage reading, room and harvest recorded against them. Your live farm's data is not touched &mdash; this button physically cannot reach it.</p>
+    <% if (can('reset_training_data')) { %>
+      <form method="post" action="/farm/reset-training" data-confirm="Wipe ALL training data? This cannot be undone.">
+        <input type="hidden" name="farm_id" value="<%= f.id %>" />
+        <div class="field" style="max-width:16rem; margin-bottom:0.6rem">
+          <label>Type RESET to confirm</label>
+          <input type="text" name="confirm" placeholder="RESET" autocomplete="off" />
+        </div>
+        <div class="form-actions"><button class="btn danger" type="submit">Wipe Training Data</button></div>
+      </form>
+    <% } else { %>
+      <div class="empty-state">Your role doesn't have permission to wipe training data.</div>
+    <% } %>
+  </div>
+<% }) %>
+
+<%- include('partials/footer') %>

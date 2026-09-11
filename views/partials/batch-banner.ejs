@@ -1,0 +1,44 @@
+<%
+  var currentStageMeta = STAGE_META.find(function(s) { return s.key === batch.current_stage; });
+%>
+<div class="toolbar">
+  <div>
+    <h1 class="batch-code"><a href="/batches/<%= batch.id %>"><%= batch.batch_code %></a></h1>
+    <span class="stage-pill">Current stage: <%= currentStageMeta ? currentStageMeta.label : batch.current_stage %></span>
+    <span class="status-pill status-<%= batch.status %>"><%= batch.status === 'completed' ? 'Completed' : 'In Progress' %></span>
+  </div>
+  <div>
+    <% if (can('export_data')) { %>
+      <a class="btn secondary" href="/batches/<%= batch.id %>/export.csv">Export CSV</a>
+    <% } %>
+    <% if (can('delete_batch')) { %>
+      <form method="post" action="/batches/<%= batch.id %>/delete" style="display:inline"
+        data-confirm="Delete this batch and all its data? This cannot be undone.">
+        <button class="btn danger" type="submit">Delete Batch</button>
+      </form>
+    <% } %>
+  </div>
+</div>
+
+<div class="stage-nav">
+  <a href="/batches/<%= batch.id %>" class="<%= typeof currentPage !== 'undefined' && currentPage === 'overview' ? 'active' : '' %>">Overview</a>
+  <% STAGE_META.forEach(function(s, i) { %>
+    <%
+      // Stages outside your department stay reachable (traceability) but are
+      // marked so it's obvious at a glance which ones you can actually act on.
+      var viewOnly = s.permission && !can(s.permission);
+    %>
+    <a href="<%= s.path(batch.id) %>"
+       class="<%= typeof currentPage !== 'undefined' && currentPage === s.key ? 'active' : '' %> <%= viewOnly ? 'view-only' : '' %>"
+       <%- viewOnly ? 'title="View only — ' + s.label + ' is entered by the other department"' : '' %>><%= i + 1 %>. <%= s.label %><%= viewOnly ? ' 🔒' : '' %></a>
+  <% }) %>
+</div>
+
+<% if (typeof readOnly !== 'undefined' && readOnly) { %>
+  <div class="readonly-notice">
+    <strong>View only.</strong>
+    <%= typeof stageMeta !== 'undefined' && stageMeta ? stageMeta.label : 'This stage' %> is entered by the
+    <%= typeof stageMeta !== 'undefined' && stageMeta && stageMeta.dept === 'growing' ? 'Growing' : 'Compost' %>
+    department. You can read everything here, but not change it.
+  </div>
+<% } %>

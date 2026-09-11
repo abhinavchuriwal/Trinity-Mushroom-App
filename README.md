@@ -1,0 +1,205 @@
+# Trinity Agro Batch Tracker
+
+A simple internal web app for logging compost batch data through the full cycle —
+Pre-Wetting (recipe + soaking), Phase I Composting, Phase II (Pasteurization &
+Conditioning), Spawning, Casing Soil Preparation, Room In, Harvest, and Room Out.
+Each stage is its own page; department heads enter data for their stage, and
+parameters outside the configured QC range are flagged automatically, with a
+standard-vs-actual comparison for the whole batch.
+
+## Running it
+
+Requires [Node.js](https://nodejs.org) **22 LTS** ("Jod"). Node 24 currently causes
+the server to crash intermittently under load — the `better-sqlite3` native
+database driver hits a garbage-collection bug specific to that Node version. If
+you reinstall Node, install v22, not the newest release.
+
+```bash
+npm install
+npm start
+```
+
+Then open http://localhost:4000 in a browser. On the local network, other computers
+can reach it at `http://<this-machine's-IP>:4000`.
+
+Data is stored in a single SQLite file at
+`~/Library/Application Support/TrinityAgroBatchTracker/trinity-agro.db` — **not**
+inside this project folder. That's intentional: cloud-sync services (OneDrive,
+Dropbox, Google Drive, etc.) corrupt or crash SQLite databases in WAL mode because
+they intercept file locking in ways SQLite doesn't expect, so the live database
+stays local no matter where this project folder itself lives. You can override its
+location with the `TRINITY_DATA_DIR` environment variable if needed.
+
+### Backups
+
+The app backs itself up automatically: one snapshot when the server starts (skipped
+if a backup was already taken in the last 15 minutes, so restarting repeatedly
+doesn't flush your history) and one per day while it's running. Snapshots go to
+`<data dir>/backups/`, and the most recent **30** are kept — set
+`TRINITY_BACKUP_KEEP` to change that. They use SQLite's online-backup API, so
+taking one while people are entering data is safe.
+
+**Settings → Backups** lists every snapshot, has a *Back Up Now* button (worth
+using before anything risky — bulk edits, deleting a batch, wiping training data),
+and lets you download any snapshot.
+
+These snapshots sit next to the live database, so they protect against mistakes
+made *inside* the app — not against losing this Mac. Periodically download one, or
+copy the `backups/` folder to a synced/external location. Copy the **backup** files,
+never the live `trinity-agro.db`, which cloud sync will corrupt while it's in use.
+
+To restore: stop the server, replace `trinity-agro.db` with a backup (deleting any
+`-wal` and `-shm` files beside it), and start again.
+
+## What's in it
+
+- **Dashboard** — list of all batches, current stage, status.
+- **Log Harvest** (`/harvest-log`) — a fast, cross-batch entry point for harvest
+  picks: pick a room from a dropdown of every room currently occupied (across
+  *all* in-progress batches at once — useful when pickers are harvesting
+  several rooms/batches the same day), enter A/B grade kg, done. Writes to the
+  same data as that batch's own Harvest page; a "Today's Entries" list below
+  the form shows what's already been logged today with a delete-if-mistaken
+  option. Use a batch's own Harvest page instead when you need its per-room
+  history or are ready for Room Out.
+- **New Batch** — batch code is `TAPL-NepaliFiscalYear-YourNumber`
+  (e.g. `TAPL-2083/84-001`). The fiscal year (Shrawan–Ashadh) is computed
+  automatically from the start date using the Bikram Sambat calendar; you choose
+  the trailing number, which just needs to be unique within that fiscal year.
+  Note: batches created before this format was added (e.g. `2026-001`) keep their
+  original codes — only new batches use the new format.
+- **Raw Materials** (master list) — name, landed cost per kg (NPR), standard
+  Carbon %/Nitrogen % (dry basis), notes, active toggle. These are the dropdown
+  choices and defaults used when building a batch's recipe. Editing or
+  deactivating a material here never changes costs/percentages already recorded
+  on past batches — those are snapshotted at the time each recipe line was added.
+- **Departments** — the pipeline is split in two: **Compost Dept** owns
+  Pre-Wetting, Phase I, Phase II and Spawning; **Growing Dept** owns Casing,
+  Room In, Harvest and Room Out. Everyone logged in can *view* every stage of
+  every batch (full traceability — compost staff can see how their compost
+  actually yielded), but only the owning department can *save* a stage. Stages
+  outside your department show a 🔒 on the tab, a "View only" banner, and greyed
+  controls; the block is enforced server-side on every save, so the greying is
+  just so nobody clicks a button that would bounce. Admin and Farm Manager can
+  edit everything. The Dashboard has a Compost/Growing filter to show only the
+  batches currently sitting in your half of the pipeline.
+- **Settings** — one tab grouping the configuration areas, with sub-tabs across
+  the top: **QC Parameters**, **Farm Master Data**, **Users & Roles**, and
+  **Farms & Training**. Which sub-tabs appear depends on the logged-in user's role.
+- **Farms & training data** — a *farm* is a workspace that batches belong to.
+  Two ship by default: your live farm, and a **Training / Practice** farm for
+  onboarding and experimentation. Training batches never appear on the real
+  farm's Dashboard, Reports, or CSV exports, and can't even be reached by
+  typing their URL — the whole app is scoped to the farm picked in the header
+  dropdown. While you're in a training farm the page turns amber and shows a
+  "TRAINING DATA" badge so practice data is never mistaken for real. Batch
+  codes carry the farm's own prefix (`TAPL-…` vs `TRAIN-…`), so the same batch
+  number can be used for practice without ever colliding with production.
+  Settings → Farms & Training has a **wipe** button that clears a training
+  farm completely (requires typing `RESET`); it is hard-wired to refuse any
+  farm not flagged as training, so it cannot touch live data. Rooms, tunnels,
+  bunkers, raw materials and QC ranges are deliberately shared company-wide —
+  training runs against your real room codes and real QC targets, which is the
+  point. Users are granted access per farm, so a trainee can be given the
+  Training farm only and never reach production data.
+- **Fiscal years are a filter, not a separate ledger.** There is no "open a new
+  financial year" step — every batch already carries its Nepali FY (derived
+  from its start date), so Dashboard and Reports both offer an FY selector, and
+  Reports adds a **Fiscal Year Comparison** table (batches, cost, harvest kg,
+  avg yield %, avg A grade %, avg efficiency, QC flags — per year, newest
+  first). Keeping years in one place is what makes year-over-year comparison
+  possible; closing off a year the way accounting software does would prevent it.
+- **Farm Master Data** (under Settings) — the fixed inventory of Growing Rooms,
+  Tunnels, and Bunkers, each a short code (e.g. `GR1`, `T1`, `B1`) plus an
+  optional name/notes. These codes are what the dropdowns on Phase I (bunker),
+  Phase II (tunnel), Spawning/Casing (room), and Room In (room) offer — no more
+  free-typing a room/tunnel/bunker and risking a typo that breaks matching.
+  Deactivating an entry removes it from the dropdown for new entries but never
+  touches what's already recorded on past batches; if a batch's saved value
+  doesn't match any active code (older data, or before a code existed) the
+  dropdown still shows it, tagged "(not in master list)", instead of silently
+  blanking it out.
+- **Batch Overview** (`/batches/:id`) — a hub page per batch: every stage listed
+  with its status (Done / In Progress / Not started), key date, day-count, and
+  a **QC Flags** count per stage; a full **standard-vs-actual** table for every
+  tracked parameter on the batch; and a batch-economics summary (raw material
+  cost, total harvest, A-Grade Efficiency Ratio). Click through to any stage's
+  own page from here, or use the tab bar on every stage page.
+- **Each stage is its own page**, reachable from the tab bar on any batch page:
+  1. **Pre-Wetting** — shows the raw material recipe entered when the batch was
+     created (material, dry kg, cost/kg, amount, Carbon %/Nitrogen %, batch C:N
+     ratio) read-only except for removing a mistaken line — recipe entry only
+     happens on the New Batch page, not here — plus the in date/out date/days
+     for the soak itself.
+  2. **Phase I Composting (Bunker)** — bunker no., planned turns, start/end
+     date and days; a turn log capturing bunker no., temperature/moisture/pH
+     before each turn, with a chart
+  3. **Phase II** — Pasteurization & Conditioning tunnel readings, chart;
+     fill/end date and days
+  4. **Spawning** — spawning date, spawn run end date, days, no. of bags, kg/bag,
+     with total fill weight calculated automatically
+  5. **Casing Soil Preparation** — material mix, chalk/lime, pH, moisture,
+     pasteurization, layer thickness; application/end date and days
+  6. **Room In** — one row per growing room (room no., room-in date)
+  7. **Harvest** — per room, a picking log (date, A grade kg, B grade kg).
+     Come back to this page repeatedly as flushes happen over the cropping cycle.
+  8. **Room Out** — per room: room-out date + days in room, compost fill weight,
+     and auto-calculated **Yield %** (total harvest ÷ compost weight) and
+     **A Grade Yield %** (A grade ÷ compost weight), a room summary (allocated
+     cost, A-Grade Efficiency Ratio), and an on-demand **Performance Analysis**
+     — compares this room's yield and parameters against your other completed
+     batches and against QC targets, and suggests what to look at next. Uses
+     Claude when `ANTHROPIC_API_KEY` is set in the environment (see below);
+     otherwise falls back to a deterministic rule-based analysis — always
+     works, no API key required.
+  Every stage's summary form has a checkbox that advances the batch to the next
+  stage and jumps you straight to that page.
+- **QC Parameters** (under Settings) — the min/max range for each tracked parameter (batch C:N ratio,
+  pile temperature, pH, pasteurization temp/duration, ammonia, spawn rate, casing
+  pH/moisture/layer thickness, etc). The seeded defaults are typical starting
+  points for button mushroom compost/casing — **adjust them to match your own
+  SOP**; that's what actually drives the OK/LOW/HIGH flags and the QC Flags
+  counts shown on the Dashboard and every batch page.
+- **A-Grade Efficiency Ratio** — total A-grade kg harvested ÷ raw material cost,
+  shown as kg of A-grade mushroom per NPR 1,000 spent. This is the app's cost
+  metric — there's no revenue/sales-price tracking; it only ever compares
+  output against what the compost recipe cost.
+- **Reports** (`/reports`) — cross-batch comparison table (cost, compost kg,
+  harvest kg, yield %, A grade %, A-Grade Efficiency Ratio, QC flag count),
+  sortable by any column, with a fleet summary and a downloadable CSV of the
+  whole comparison. The "Why Yield Varies Across Batches" panel finds your
+  best- and worst-performing batches and, for each tracked parameter, compares
+  the average yield of batches that stayed in its QC range vs. those that
+  didn't — same Claude-or-rules analysis engine as the Room Out page.
+- **CSV export** — per-batch export button for record-keeping, including the full
+  raw material recipe, every stage's data, rooms, harvests, and computed totals.
+
+## AI performance analysis (optional)
+
+The Room Out and Reports pages can generate a natural-language performance
+analysis using Claude. This is **optional** — without any setup, both pages
+generate a solid rule-based analysis instead (out-of-QC-range parameters with
+plain-language explanations, and yield comparisons against your other
+batches). To upgrade to Claude-written analysis, set an API key before
+starting the server:
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+npm start
+```
+
+Get a key at [console.anthropic.com](https://console.anthropic.com). This is a
+paid API (small cost per analysis) and requires internet access from the
+machine running the server — everything else in this app works fully offline.
+If the key is missing, invalid, or the request fails for any reason, the app
+silently falls back to the rule-based analysis; nothing breaks either way.
+
+## Notes on this version
+
+- No login — anyone on the network who can open the app can enter data for any
+  department. Fine for a small trusted team; say the word if you later want named
+  logins per department head.
+- Runs as a single Node process with a local SQLite file, so it works entirely
+  offline on the farm's own network. It can be moved to a small cloud host later
+  (e.g. Railway, Render, a VPS) with no code changes if remote/phone access becomes
+  useful.

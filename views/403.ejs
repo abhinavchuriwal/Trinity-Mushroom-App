@@ -1,0 +1,11 @@
+<% var title = 'Access Denied' %>
+<%- include('partials/header') %>
+
+<div class="card">
+  <h1>Access Denied</h1>
+  <p>Your role doesn't have the <code><%= permission %></code> permission needed for that action.</p>
+  <p class="muted">Ask an Admin or Farm Manager to grant it via Users &amp; Roles if you believe you should have access.</p>
+  <p><a href="/">Back to dashboard</a></p>
+</div>
+
+<%- include('partials/footer') %>

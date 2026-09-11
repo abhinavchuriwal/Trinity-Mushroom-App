@@ -1,0 +1,70 @@
+<% var title = 'Raw Materials' %>
+<%- include('partials/header') %>
+
+<h1>Raw Materials Master List</h1>
+<p class="muted">Fix a default cost per kg (NPR) and dry-basis Carbon % / Nitrogen % for each material you use. These become the dropdown choices &amp; defaults when building a batch's raw material recipe on its Intake page &mdash; costs and C:N% can still be adjusted per batch if a specific delivery differs. Editing or deactivating a material here never changes costs already recorded on past batches.</p>
+
+<% if (error) { %>
+  <p style="color:#c0392b; font-weight:600"><%= error %></p>
+<% } %>
+
+<% if (can('manage_raw_materials')) { %>
+<div class="card">
+  <h2>Add Raw Material</h2>
+  <form class="grid" method="post" action="/raw-materials">
+    <div class="field wide"><label>Name</label><input type="text" name="name" placeholder="e.g. Paddy Straw" required /></div>
+    <div class="field"><label>Landed Cost (NPR/kg)</label><input type="number" step="any" name="default_cost_per_kg_npr" /></div>
+    <div class="field"><label>Standard Carbon %</label><input type="number" step="any" name="carbon_pct" /></div>
+    <div class="field"><label>Standard Nitrogen %</label><input type="number" step="any" name="nitrogen_pct" /></div>
+    <div class="field wide"><label>Notes</label><input type="text" name="notes" /></div>
+    <div class="form-actions"><button class="btn" type="submit">Add Material</button></div>
+  </form>
+</div>
+<% } %>
+
+<div class="card">
+  <h2>Materials</h2>
+  <% if (materials.length === 0) { %>
+    <div class="empty-state">No raw materials yet. Add your first one above.</div>
+  <% } else { %>
+    <% materials.forEach(function(m) { %>
+      <form id="mat-<%= m.id %>" method="post" action="/raw-materials/<%= m.id %>"></form>
+    <% }) %>
+    <div class="table-scroll">
+    <table class="settings-table">
+      <thead>
+        <tr>
+          <th>Name</th><th>Landed Cost (NPR/kg)</th><th>Standard Carbon %</th><th>Standard Nitrogen %</th>
+          <th>C:N of Material</th><th>Notes</th><th>Active</th>
+          <% if (can('manage_raw_materials')) { %><th>Save</th><th>Delete</th><% } %>
+        </tr>
+      </thead>
+      <tbody>
+        <% materials.forEach(function(m) { %>
+          <% var fid = 'mat-' + m.id %>
+          <% var ro = !can('manage_raw_materials') %>
+          <tr style="<%= m.active ? '' : 'opacity:0.5' %>">
+            <td><input form="<%= fid %>" type="text" name="name" value="<%= m.name %>" style="width:11rem" required <%= ro ? 'disabled' : '' %> /></td>
+            <td><input form="<%= fid %>" type="number" step="any" name="default_cost_per_kg_npr" value="<%= m.default_cost_per_kg_npr === null ? '' : m.default_cost_per_kg_npr %>" style="width:6rem" <%= ro ? 'disabled' : '' %> /></td>
+            <td><input form="<%= fid %>" type="number" step="any" name="carbon_pct" value="<%= m.carbon_pct === null ? '' : m.carbon_pct %>" style="width:5rem" <%= ro ? 'disabled' : '' %> /></td>
+            <td><input form="<%= fid %>" type="number" step="any" name="nitrogen_pct" value="<%= m.nitrogen_pct === null ? '' : m.nitrogen_pct %>" style="width:5rem" <%= ro ? 'disabled' : '' %> /></td>
+            <td class="muted"><%= (m.carbon_pct && m.nitrogen_pct) ? (m.carbon_pct / m.nitrogen_pct).toFixed(1) + ':1' : '—' %></td>
+            <td><input form="<%= fid %>" type="text" name="notes" value="<%= m.notes || '' %>" style="width:11rem" <%= ro ? 'disabled' : '' %> /></td>
+            <td><input form="<%= fid %>" type="checkbox" name="active" value="1" <%= m.active ? 'checked' : '' %> style="width:auto" <%= ro ? 'disabled' : '' %> /></td>
+            <% if (!ro) { %>
+              <td><button form="<%= fid %>" class="btn small" type="submit">Save</button></td>
+              <td>
+                <form method="post" action="/raw-materials/<%= m.id %>/delete" data-confirm="Delete <%= m.name %>? Past batches keep their recorded costs regardless.">
+                  <button class="btn small danger" type="submit">Del</button>
+                </form>
+              </td>
+            <% } %>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+    </div>
+  <% } %>
+</div>
+
+<%- include('partials/footer') %>

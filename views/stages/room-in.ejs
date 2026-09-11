@@ -1,0 +1,55 @@
+<% var title = batch.batch_code + ' · Room In' %>
+<%- include('../partials/header') %>
+<%- include('../partials/batch-banner') %>
+
+<section class="card">
+  <h2>Room In</h2>
+  <p class="muted">Log each growing room this batch's spawned/cased material is moved into. Bag counts and fill weight are recorded on the Spawning page.</p>
+
+  <% if (rooms.length) { %>
+    <% rooms.forEach(function(r) { %>
+      <form id="room-<%= r.id %>" method="post" action="/batches/<%= batch.id %>/rooms/<%= r.id %>"></form>
+    <% }) %>
+    <table>
+      <thead>
+        <tr><th>Room No</th><th>Room In Date</th><th>Entered By</th><th>Notes</th><th></th><th></th></tr>
+      </thead>
+      <tbody>
+        <% rooms.forEach(function(r) { %>
+          <% var fid = 'room-' + r.id %>
+          <tr>
+            <td><select form="<%= fid %>" name="room_no" required><%- optionsFor(growingRooms, r.room_no) %></select></td>
+            <td><input form="<%= fid %>" type="date" name="room_in_date" value="<%= v(r.room_in_date) %>" /></td>
+            <td><input form="<%= fid %>" type="text" name="entered_by" value="<%= v(r.entered_by) %>" style="width:7rem" /></td>
+            <td><input form="<%= fid %>" type="text" name="notes" value="<%= v(r.notes) %>" style="width:8rem" /></td>
+            <td><button form="<%= fid %>" class="btn small" type="submit">Save</button></td>
+            <td>
+              <form method="post" action="/batches/<%= batch.id %>/rooms/<%= r.id %>/delete" data-confirm="Delete Room <%= r.room_no %>? Any harvest data for it will be lost too.">
+                <button class="btn small danger" type="submit">Del</button>
+              </form>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } else { %>
+    <div class="empty-state">No rooms logged yet.</div>
+  <% } %>
+
+  <form class="grid" method="post" action="/batches/<%= batch.id %>/rooms" style="margin-top:1rem">
+    <div class="field"><label>Room No</label><select name="room_no" required><%- optionsFor(growingRooms, null) %></select></div>
+    <div class="field"><label>Room In Date</label><input type="date" name="room_in_date" /></div>
+    <div class="field"><label>Entered By</label><input type="text" name="entered_by" /></div>
+    <div class="field wide"><label>Notes</label><input type="text" name="notes" /></div>
+    <div class="form-actions"><button class="btn" type="submit">Add Room</button></div>
+  </form>
+</section>
+
+<div class="card">
+  <form method="post" action="/batches/<%= batch.id %>/rooms-advance">
+    <label class="muted"><input type="checkbox" name="advance" value="1" style="width:auto" required /> Mark Room In complete for this batch &amp; move to Harvest</label>
+    <div class="form-actions" style="margin-top:0.5rem"><button class="btn" type="submit">Continue to Harvest</button></div>
+  </form>
+</div>
+
+<%- include('../partials/footer') %>

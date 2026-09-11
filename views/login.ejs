@@ -1,0 +1,25 @@
+<% var title = 'Log In' %>
+<%- include('partials/header') %>
+
+<div class="auth-page">
+  <div class="card">
+    <h1>Log In</h1>
+    <% if (error) { %>
+      <p style="color:#c0392b; font-weight:600"><%= error %></p>
+    <% } %>
+    <form method="post" action="/login">
+      <input type="hidden" name="next" value="<%= next %>" />
+      <div class="field" style="margin-bottom:0.75rem">
+        <label>Username</label>
+        <input type="text" name="username" autofocus required />
+      </div>
+      <div class="field" style="margin-bottom:0.75rem">
+        <label>Password</label>
+        <input type="password" name="password" required />
+      </div>
+      <div class="form-actions"><button class="btn" type="submit">Log In</button></div>
+    </form>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

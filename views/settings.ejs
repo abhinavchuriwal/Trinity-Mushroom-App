@@ -1,0 +1,39 @@
+<% var title = 'Settings' %>
+<%- include('partials/header') %>
+
+<h1>Settings</h1>
+<%- include('partials/settings-nav') %>
+
+<p class="muted">These ranges drive the OK / LOW / HIGH flags shown on batch pages. The defaults are typical starting points for button mushroom compost &mdash; calibrate them to your own SOP.</p>
+
+<div class="card">
+  <h2>QC Parameter Ranges</h2>
+  <div class="table-scroll">
+  <table class="settings-table">
+    <thead><tr><th>Stage</th><th>Parameter</th><th>Unit</th><th>Min &ndash; Max</th><th></th></tr></thead>
+    <tbody>
+      <% var stageLabels = { intake: 'Pre-Wetting (Recipe)', phase1: 'Phase I', phase2: 'Phase II', spawning: 'Spawning', casing: 'Casing' }; %>
+      <% params.forEach(function(p) { %>
+        <tr>
+          <td><span class="stage-pill"><%= stageLabels[p.stage] || p.stage %></span></td>
+          <td><%= p.label %></td>
+          <td><%= p.unit %></td>
+          <td class="range-inputs">
+            <% if (can('manage_qc_settings')) { %>
+              <form method="post" action="/settings/qc-parameters/<%= p.id %>" style="display:flex; gap:0.4rem">
+                <input type="number" step="any" name="min_value" value="<%= p.min_value === null ? '' : p.min_value %>" placeholder="min" />
+                <input type="number" step="any" name="max_value" value="<%= p.max_value === null ? '' : p.max_value %>" placeholder="max" />
+                <button class="btn small" type="submit">Save</button>
+              </form>
+            <% } else { %>
+              <%= p.min_value === null ? '–' : p.min_value %> &ndash; <%= p.max_value === null ? '–' : p.max_value %>
+            <% } %>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

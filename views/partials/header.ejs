@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title><%= typeof title !== 'undefined' ? title + ' · ' : '' %><%= companyName %> Batch Tracker</title>
+  <link rel="icon" type="image/png" href="/images/favicon.png" />
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body class="<%= typeof currentFarm !== 'undefined' && currentFarm && currentFarm.is_training ? 'is-training' : '' %>">
+  <header class="site">
+    <div class="brand">
+      <img src="/images/logo-header.png" alt="<%= companyName %>" class="brand-logo" />
+      <div class="brand-text">
+        <span class="brand-name">Trinity Agro</span>
+        <small>COMPOST &amp; SPAWNING BATCH TRACKER</small>
+      </div>
+    </div>
+    <% if (typeof currentUser !== 'undefined' && currentUser) { %>
+      <nav>
+        <a href="/">Dashboard</a>
+        <% if (can('edit_harvest')) { %><a href="/harvest-log">Log Harvest</a><% } %>
+        <% if (can('edit_prewetting')) { %><a href="/batches/new">New Batch</a><% } %>
+        <% if (can('manage_raw_materials')) { %><a href="/raw-materials">Raw Materials</a><% } %>
+        <a href="/reports">Reports</a>
+        <a href="/settings">Settings</a>
+      </nav>
+      <div class="user-bar">
+        <% if (allowedFarms.length > 1) { %>
+          <form method="post" action="/farm/switch" class="farm-switch">
+            <select name="farm_id" onchange="this.form.submit()" title="Active workspace">
+              <% allowedFarms.forEach(function(f) { %>
+                <option value="<%= f.id %>" <%= f.id === currentFarm.id ? 'selected' : '' %>><%= f.name %></option>
+              <% }) %>
+            </select>
+          </form>
+        <% } %>
+        <% if (currentFarm.is_training) { %><span class="training-badge">TRAINING DATA</span><% } %>
+        <span><%= currentUser.full_name || currentUser.username %> <span class="muted">· <%= currentUser.roleName || 'No role' %></span></span>
+        <form method="post" action="/logout"><button class="btn small secondary" type="submit">Log out</button></form>
+      </div>
+    <% } %>
+  </header>
+  <main<%- typeof readOnly !== 'undefined' && readOnly ? ' data-readonly="1"' : '' %>>

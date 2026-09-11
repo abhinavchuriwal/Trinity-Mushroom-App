@@ -1,0 +1,23 @@
+{
+  "name": "trinity-agro-batch-tracker",
+  "version": "1.0.0",
+  "description": "Batch tracking and QC data entry for compost preparation through spawning, Trinity Agro Private Limited.",
+  "private": true,
+  "main": "server/app.js",
+  "engines": {
+    "node": "22.x"
+  },
+  "scripts": {
+    "start": "node server/app.js",
+    "dev": "node --watch server/app.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.124.0",
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^11.3.0",
+    "ejs": "^3.1.10",
+    "express": "^4.21.0",
+    "express-session": "^1.19.0",
+    "nepali-date-converter": "^3.4.0"
+  }
+}

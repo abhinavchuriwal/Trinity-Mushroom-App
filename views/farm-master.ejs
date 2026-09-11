@@ -1,0 +1,68 @@
+<% var title = 'Farm Master Data' %>
+<%- include('partials/header') %>
+
+<h1>Settings</h1>
+<%- include('partials/settings-nav') %>
+
+<h2 style="margin-bottom:0.4rem">Farm Master Data</h2>
+<p class="muted">The fixed inventory of growing rooms, tunnels, and bunkers on the farm. These codes become the dropdown choices on Phase I (bunker), Phase II (tunnel), Spawning/Casing (room), and Room In (room). Deactivating an entry keeps it visible on batches that already recorded it, it just drops out of the dropdown for new entries.</p>
+
+<% if (error) { %>
+  <p style="color:#c0392b; font-weight:600"><%= error %></p>
+<% } %>
+
+<%
+  function masterCard(key, title, basePath, placeholder, rows) {
+    var editable = can('manage_farm_master');
+%>
+<div class="card">
+  <h2><%= title %></h2>
+  <% if (editable) { %>
+  <form class="grid" method="post" action="<%= basePath %>">
+    <div class="field"><label>Code</label><input type="text" name="code" placeholder="<%= placeholder %>" required /></div>
+    <div class="field"><label>Name / Description</label><input type="text" name="name" /></div>
+    <div class="field wide"><label>Notes</label><input type="text" name="notes" /></div>
+    <div class="form-actions"><button class="btn" type="submit">Add</button></div>
+  </form>
+  <% } %>
+
+  <% if (!rows.length) { %>
+    <div class="empty-state">None added yet.</div>
+  <% } else { %>
+    <% if (editable) { rows.forEach(function(r) { %>
+      <form id="<%= key %>-<%= r.id %>" method="post" action="<%= basePath %>/<%= r.id %>"></form>
+    <% }) } %>
+    <div class="table-scroll">
+    <table class="settings-table">
+      <thead><tr><th>Code</th><th>Name / Description</th><th>Notes</th><th>Active</th><% if (editable) { %><th>Save</th><th>Delete</th><% } %></tr></thead>
+      <tbody>
+        <% rows.forEach(function(r) { %>
+          <% var fid = key + '-' + r.id %>
+          <tr style="<%= r.active ? '' : 'opacity:0.5' %>">
+            <td><input form="<%= fid %>" type="text" name="code" value="<%= r.code %>" style="width:6rem" required <%= editable ? '' : 'disabled' %> /></td>
+            <td><input form="<%= fid %>" type="text" name="name" value="<%= r.name || '' %>" style="width:11rem" <%= editable ? '' : 'disabled' %> /></td>
+            <td><input form="<%= fid %>" type="text" name="notes" value="<%= r.notes || '' %>" style="width:11rem" <%= editable ? '' : 'disabled' %> /></td>
+            <td><input form="<%= fid %>" type="checkbox" name="active" value="1" <%= r.active ? 'checked' : '' %> style="width:auto" <%= editable ? '' : 'disabled' %> /></td>
+            <% if (editable) { %>
+              <td><button form="<%= fid %>" class="btn small" type="submit">Save</button></td>
+              <td>
+                <form method="post" action="<%= basePath %>/<%= r.id %>/delete" data-confirm="Delete <%= r.code %>? Batches that already recorded it keep the value.">
+                  <button class="btn small danger" type="submit">Del</button>
+                </form>
+              </td>
+            <% } %>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+    </div>
+  <% } %>
+</div>
+<%
+  }
+  masterCard('room', 'Growing Rooms', '/farm-master/rooms', 'e.g. GR1', growingRooms);
+  masterCard('tunnel', 'Tunnels', '/farm-master/tunnels', 'e.g. T1', tunnels);
+  masterCard('bunker', 'Bunkers', '/farm-master/bunkers', 'e.g. B1', bunkers);
+%>
+
+<%- include('partials/footer') %>

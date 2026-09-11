@@ -1,0 +1,85 @@
+<% var title = batch.batch_code %>
+<%- include('partials/header') %>
+<%- include('partials/batch-banner') %>
+
+<div class="card">
+  <h2>Process Stages</h2>
+  <table>
+    <thead><tr><th>#</th><th>Stage</th><th>Status</th><th>Started / Key Info</th><th>Days</th><th>QC Flags</th><th></th></tr></thead>
+    <tbody>
+      <% stageStatus.forEach(function(s, i) {
+           var stageOrder = stageStatus.map(function(x){return x.key;});
+           var currentIdx = stageOrder.indexOf(batch.current_stage);
+           var isDone = i < currentIdx || batch.status === 'completed';
+           var isCurrent = s.key === batch.current_stage && batch.status !== 'completed';
+      %>
+        <tr>
+          <td><%= i + 1 %></td>
+          <td><a href="<%= s.path(batch.id) %>"><%= s.label %></a></td>
+          <td>
+            <% if (isDone) { %><span class="status-pill status-completed">Done</span>
+            <% } else if (isCurrent) { %><span class="status-pill status-in_progress">In Progress</span>
+            <% } else { %><span class="muted">Not started</span><% } %>
+          </td>
+          <td><%= s.summary || '—' %></td>
+          <td><%= s.days !== null ? daysLabel(s.days) : '—' %></td>
+          <td>
+            <% if (s.flagCount > 0) { %>
+              <span class="qc-cell qc-high"><%= s.flagCount %> flag<%= s.flagCount === 1 ? '' : 's' %></span>
+            <% } else { %><span class="muted">—</span><% } %>
+          </td>
+          <td><a class="btn small secondary" href="<%= s.path(batch.id) %>">Open</a></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>QC: Standard vs Actual</h2>
+  <p class="muted">Every tracked parameter for this batch, compared against the range configured in QC Settings.</p>
+  <% if (!qcComparison.length) { %>
+    <div class="empty-state">No QC parameters configured yet.</div>
+  <% } else { %>
+    <table>
+      <thead><tr><th>Stage</th><th>Parameter</th><th>Standard (Target)</th><th>Actual</th><th>Status</th></tr></thead>
+      <tbody>
+        <% qcComparison.forEach(function(f) { %>
+          <tr>
+            <td><span class="stage-pill"><%= ({intake:'Pre-Wetting', phase1:'Phase I', phase2:'Phase II', spawning:'Spawning', casing:'Casing'})[f.stage] || f.stage %></span></td>
+            <td><%= f.label %></td>
+            <td><%= f.min !== null ? f.min : '–' %>&ndash;<%= f.max !== null ? f.max : '–' %><%= f.unit %></td>
+            <td><%= f.value !== null ? f.value + f.unit : '—' %></td>
+            <td>
+              <% if (f.status === 'ok') { %><span class="qc-cell qc-ok"><b>OK</b></span>
+              <% } else if (f.status === 'low' || f.status === 'high') { %><span class="qc-cell qc-<%= f.status %>"><b><%= f.status.toUpperCase() %></b></span>
+              <% } else { %><span class="muted">No data yet</span><% } %>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+</div>
+
+<div class="card">
+  <h2>Batch Economics</h2>
+  <div class="qc-legend">
+    Raw material cost: <strong><%= npr(intakeSummary.totalCostNpr) %></strong>
+    <% if (intakeSummary.totalDryKg) { %> (<%= npr(intakeSummary.costPerKgCompost) %>/kg compost mix)<% } %>
+  </div>
+  <% if (totalHarvestA + totalHarvestB > 0) { %>
+    <div class="qc-legend">
+      Total harvest: <strong><%= (totalHarvestA + totalHarvestB).toFixed(1) %> kg</strong>
+      (A grade: <%= totalHarvestA.toFixed(1) %> kg, B grade: <%= totalHarvestB.toFixed(1) %> kg)
+    </div>
+    <div class="qc-legend">
+      A-Grade Efficiency Ratio: <strong><%= aGradeEfficiency !== null ? aGradeEfficiency.toFixed(2) + ' kg per NPR 1,000' : '—' %></strong>
+      <span class="muted">(A grade kg &divide; raw material cost)</span>
+    </div>
+  <% } else { %>
+    <div class="muted">No harvest recorded yet &mdash; A-Grade Efficiency Ratio will appear once Room Out data is logged.</div>
+  <% } %>
+</div>
+
+<%- include('partials/footer') %>

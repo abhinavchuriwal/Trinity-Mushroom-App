@@ -1,0 +1,99 @@
+<% var title = batch.batch_code + ' · Room Out' %>
+<%- include('../partials/header') %>
+<%- include('../partials/batch-banner') %>
+
+<% if (!rooms.length) { %>
+  <div class="card">
+    <div class="empty-state">No rooms logged yet &mdash; add rooms on the Room In page first.</div>
+  </div>
+<% } %>
+
+<% rooms.forEach(function(room) { %>
+  <section class="card">
+    <h2>Room <%= room.room_no %></h2>
+    <div class="qc-legend">
+      Room In: <%= room.room_in_date || '—' %>
+      &nbsp;·&nbsp; Harvested: <strong><%= (room.gradeA + room.gradeB).toFixed(1) %> kg</strong> (A: <%= room.gradeA.toFixed(1) %> kg, B: <%= room.gradeB.toFixed(1) %> kg)
+    </div>
+
+    <form class="grid" method="post" action="/batches/<%= batch.id %>/rooms/<%= room.id %>/roomout">
+      <div class="field">
+        <label>Room Out Date</label>
+        <input type="date" name="room_out_date" value="<%= v(room.room_out_date) %>" />
+      </div>
+      <div class="field">
+        <label>Days in Room</label>
+        <input type="text" value="<%= daysLabel(room.days) %>" disabled />
+      </div>
+      <div class="field">
+        <label>Compost Fill Weight (kg)</label>
+        <input type="number" step="any" name="compost_fill_weight_kg"
+          value="<%= room.total_fill_weight_kg !== null ? room.total_fill_weight_kg : (suggestedCompostKg || '') %>" />
+      </div>
+      <div class="form-actions"><button class="btn small" type="submit">Save Room Out Data</button></div>
+    </form>
+
+    <div class="qc-legend" style="margin-top:0.75rem">
+      Yield %: <strong><%= room.yieldPct !== null ? room.yieldPct.toFixed(1) + '%' : '—' %></strong>
+      <span class="muted">(total harvest &divide; compost fill weight)</span>
+      &nbsp;·&nbsp; A Grade Yield %: <strong><%= room.aGradeYieldPct !== null ? room.aGradeYieldPct.toFixed(1) + '%' : '—' %></strong>
+      <span class="muted">(A grade &divide; compost fill weight)</span>
+    </div>
+
+    <h3 style="margin-top:1.25rem">Room Summary</h3>
+    <table>
+      <tbody>
+        <tr><td>Compost fill weight</td><td><strong><%= room.compostKg !== null ? room.compostKg + ' kg' : '—' %></strong></td></tr>
+        <tr><td>Total harvest</td><td><strong><%= (room.gradeA + room.gradeB).toFixed(1) %> kg</strong> (A: <%= room.gradeA.toFixed(1) %>, B: <%= room.gradeB.toFixed(1) %>)</td></tr>
+        <tr><td>Yield %</td><td><strong><%= room.yieldPct !== null ? room.yieldPct.toFixed(1) + '%' : '—' %></strong></td></tr>
+        <tr><td>A Grade Yield %</td><td><strong><%= room.aGradeYieldPct !== null ? room.aGradeYieldPct.toFixed(1) + '%' : '—' %></strong></td></tr>
+        <tr><td>Allocated raw material cost</td><td><strong><%= npr(room.allocatedCost) %></strong></td></tr>
+        <tr><td>A-Grade Efficiency Ratio</td><td><strong><%= room.aGradeEfficiency !== null ? room.aGradeEfficiency.toFixed(2) + ' kg per NPR 1,000' : '—' %></strong></td></tr>
+      </tbody>
+    </table>
+
+    <h3 style="margin-top:1.25rem">Performance Analysis</h3>
+    <div id="analysis-<%= room.id %>">
+      <button type="button" class="btn small secondary analysis-btn" data-room="<%= room.id %>" data-batch="<%= batch.id %>">Generate Analysis</button>
+    </div>
+  </section>
+<% }) %>
+
+<% if (rooms.length) { %>
+  <div class="card">
+    <form method="post" action="/batches/<%= batch.id %>/room-out-complete">
+      <label class="muted"><input type="checkbox" name="advance" value="1" style="width:auto" required /> Mark Room Out complete &amp; close out this batch</label>
+      <div class="form-actions" style="margin-top:0.5rem"><button class="btn" type="submit">Mark Batch Complete</button></div>
+    </form>
+  </div>
+<% } %>
+
+<script>
+  function runAnalysis(roomId, batchId) {
+    var container = document.getElementById('analysis-' + roomId);
+    container.innerHTML = '<div class="muted">Analyzing&hellip;</div>';
+    fetch('/batches/' + batchId + '/rooms/' + roomId + '/analysis')
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.error) {
+          container.innerHTML = '<div class="muted">Could not generate analysis: ' + data.error + '</div>';
+          return;
+        }
+        var badge = data.source === 'ai'
+          ? '<span class="stage-pill">AI-generated (Claude)</span>'
+          : '<span class="stage-pill">Rule-based analysis</span>';
+        var html = badge + '<p style="white-space:pre-line; margin-top:0.5rem">' + data.text.replace(/</g, '&lt;') + '</p>';
+        html += '<button type="button" class="btn small secondary" data-room="' + roomId + '" data-batch="' + batchId + '">Regenerate</button>';
+        container.innerHTML = html;
+        container.querySelector('button').addEventListener('click', function () { runAnalysis(roomId, batchId); });
+      })
+      .catch(function (err) {
+        container.innerHTML = '<div class="muted">Request failed: ' + err.message + '</div>';
+      });
+  }
+  document.querySelectorAll('.analysis-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () { runAnalysis(btn.dataset.room, btn.dataset.batch); });
+  });
+</script>
+
+<%- include('../partials/footer') %>

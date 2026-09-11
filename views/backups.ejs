@@ -1,0 +1,59 @@
+<% var title = 'Backups' %>
+<%- include('partials/header') %>
+
+<h1>Settings</h1>
+<%- include('partials/settings-nav') %>
+
+<h2 style="margin-bottom:0.4rem">Database Backups</h2>
+<p class="muted">A snapshot is taken automatically when the server starts and once every day it's running. The most recent <strong><%= keep %></strong> are kept; older ones are removed. Snapshots use SQLite's online-backup method, so they're safe to take while people are entering data.</p>
+
+<% if (error) { %>
+  <p style="color:#c0392b; font-weight:600"><%= error %></p>
+<% } %>
+<% if (created) { %>
+  <p style="color:#547722; font-weight:600">Backup created: <code><%= created %></code></p>
+<% } %>
+
+<div class="card">
+  <h2>Take a Backup Now</h2>
+  <p class="muted">Worth doing before anything risky &mdash; bulk edits, deleting a batch, or wiping training data.</p>
+  <form method="post" action="/settings/backups/run">
+    <div class="form-actions"><button class="btn" type="submit">Back Up Now</button></div>
+  </form>
+</div>
+
+<div class="card" style="border-color:var(--amber-600)">
+  <h2>Keep a Copy Off This Machine</h2>
+  <p class="muted">These snapshots sit next to the live database, so they protect against mistakes inside the app &mdash; not against losing or wiping this Mac. Download one periodically, or copy this folder to a cloud-synced location or an external drive:</p>
+  <p><code style="font-size:0.8rem; word-break:break-all"><%= backupDir %></code></p>
+  <p class="muted">Copy the <strong>backup</strong> files, not the live <code>trinity-agro.db</code> &mdash; cloud sync corrupts a database that's actively in use.</p>
+</div>
+
+<div class="card">
+  <h2>Available Snapshots</h2>
+  <% if (!backups.length) { %>
+    <div class="empty-state">No backups yet.</div>
+  <% } else { %>
+    <div class="table-scroll">
+      <table class="settings-table">
+        <thead><tr><th>Taken</th><th>Trigger</th><th>Size</th><th>Download</th></tr></thead>
+        <tbody>
+          <% backups.forEach(function(b) { %>
+            <%
+              var m = b.file.match(/-(startup|daily|manual)\.db$/);
+              var trigger = m ? m[1] : 'manual';
+            %>
+            <tr>
+              <td><%= b.created.toISOString().slice(0,19).replace('T',' ') %></td>
+              <td><span class="stage-pill"><%= trigger %></span></td>
+              <td><%= (b.size / 1024).toFixed(0) %> KB</td>
+              <td><a class="btn small secondary" href="/settings/backups/download/<%= encodeURIComponent(b.file) %>">Download</a></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</div>
+
+<%- include('partials/footer') %>

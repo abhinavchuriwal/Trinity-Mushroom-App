@@ -1,0 +1,75 @@
+<% var title = 'Dashboard' %>
+<%- include('partials/header') %>
+
+<div class="toolbar">
+  <h1>Batches <span class="muted" style="font-size:0.95rem; font-weight:400">· <%= currentFarm.name %></span></h1>
+  <% if (can('edit_prewetting')) { %><a class="btn" href="/batches/new">+ New Batch</a><% } %>
+</div>
+
+<%
+  // Preserve the other filter when switching one of them.
+  function q(overrides) {
+    var parts = [];
+    var f = 'fy' in overrides ? overrides.fy : fy;
+    var d = 'dept' in overrides ? overrides.dept : dept;
+    if (f) parts.push('fy=' + encodeURIComponent(f));
+    if (d) parts.push('dept=' + encodeURIComponent(d));
+    return parts.length ? '/?' + parts.join('&') : '/';
+  }
+%>
+
+<% if (fiscalYears.length > 1 || fy) { %>
+  <div class="settings-nav">
+    <a href="<%= q({fy: null}) %>" class="<%= fy ? '' : 'active' %>">All years</a>
+    <% fiscalYears.forEach(function(y) { %>
+      <a href="<%= q({fy: y}) %>" class="<%= fy === y ? 'active' : '' %>">FY <%= y %></a>
+    <% }) %>
+  </div>
+<% } %>
+
+<div class="settings-nav">
+  <a href="<%= q({dept: null}) %>" class="<%= dept ? '' : 'active' %>">All stages</a>
+  <a href="<%= q({dept: 'compost'}) %>" class="<%= dept === 'compost' ? 'active' : '' %>">Compost Dept</a>
+  <a href="<%= q({dept: 'growing'}) %>" class="<%= dept === 'growing' ? 'active' : '' %>">Growing Dept</a>
+</div>
+
+<div class="card">
+  <% if (batches.length === 0) { %>
+    <div class="empty-state">
+      <% if (fy || dept) { %>
+        No batches match this filter<%= fy ? ' (FY ' + fy + ')' : '' %><%= dept ? ' in the ' + (dept === 'compost' ? 'Compost' : 'Growing') + ' Dept stages' : '' %>.
+      <% } else { %>No batches yet. Click "New Batch" to log your first compost intake.<% } %>
+    </div>
+  <% } else { %>
+    <table class="batch-table">
+      <thead>
+        <tr>
+          <th>Batch Code</th>
+          <th>Start Date</th>
+          <th>FY</th>
+          <th>Current Stage</th>
+          <th>Status</th>
+          <th>QC Flags</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% batches.forEach(function(b) { %>
+          <tr onclick="window.location='/batches/<%= b.id %>'">
+            <td class="batch-code"><%= b.batch_code %></td>
+            <td><%= b.start_date %></td>
+            <td class="muted"><%= b.fy || '—' %></td>
+            <td><span class="stage-pill"><%= (STAGE_META.find(function(s){ return s.key === b.current_stage; }) || {}).label || b.current_stage %></span></td>
+            <td><span class="status-pill status-<%= b.status %>"><%= b.status === 'completed' ? 'Completed' : 'In Progress' %></span></td>
+            <td>
+              <% if (b.flagCount > 0) { %>
+                <span class="qc-cell qc-high"><%= b.flagCount %> flag<%= b.flagCount === 1 ? '' : 's' %></span>
+              <% } else { %><span class="muted">—</span><% } %>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+</div>
+
+<%- include('partials/footer') %>

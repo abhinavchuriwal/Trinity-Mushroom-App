@@ -1,0 +1,13 @@
+<div class="settings-nav">
+  <a href="/settings" class="<%= settingsPage === 'qc' ? 'active' : '' %>">QC Parameters</a>
+  <% if (can('manage_farm_master')) { %>
+    <a href="/farm-master" class="<%= settingsPage === 'farm-master' ? 'active' : '' %>">Farm Master Data</a>
+  <% } %>
+  <% if (can('manage_users_roles')) { %>
+    <a href="/admin/users" class="<%= settingsPage === 'users' ? 'active' : '' %>">Users &amp; Roles</a>
+    <a href="/settings/farms" class="<%= settingsPage === 'farms' ? 'active' : '' %>">Farms &amp; Training</a>
+  <% } %>
+  <% if (can('manage_backups')) { %>
+    <a href="/settings/backups" class="<%= settingsPage === 'backups' ? 'active' : '' %>">Backups</a>
+  <% } %>
+</div>
