@@ -1,5 +1,8 @@
 <%
-  var currentStageMeta = STAGE_META.find(function(s) { return s.key === batch.current_stage; });
+  // A batch shows its own pipeline, not every stage that exists — a compost
+  // batch ends at Dispatch, a growing batch starts at Receipt.
+  var pipeline = stagesFor(batch.batch_type || 'full');
+  var currentStageMeta = pipeline.find(function(s) { return s.key === batch.current_stage; });
 %>
 <div class="toolbar">
   <div>
@@ -22,7 +25,7 @@
 
 <div class="stage-nav">
   <a href="/batches/<%= batch.id %>" class="<%= typeof currentPage !== 'undefined' && currentPage === 'overview' ? 'active' : '' %>">Overview</a>
-  <% STAGE_META.forEach(function(s, i) { %>
+  <% pipeline.forEach(function(s, i) { %>
     <%
       // Stages outside your department stay reachable (traceability) but are
       // marked so it's obvious at a glance which ones you can actually act on.

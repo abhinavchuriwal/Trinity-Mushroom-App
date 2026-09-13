@@ -1,0 +1,99 @@
+<% var title = batch.batch_code + ' · Compost Receipt' %>
+<%- include('../partials/header') %>
+<%- include('../partials/batch-banner') %>
+
+<%
+  function specSheet(spec) {
+%>
+  <div class="table-scroll">
+    <table>
+      <tbody>
+        <tr><th style="width:18rem">Compost batch</th><td><strong><%= spec.batch_code %></strong></td></tr>
+        <tr><th>C:N Ratio</th><td><%- qcCell('intake', 'cn_ratio', spec.cn_ratio !== null ? spec.cn_ratio.toFixed(1) : null) %></td></tr>
+        <tr><th>Phase I avg temp / moisture / pH</th><td><%= spec.phase1_avg_temp_c !== null ? spec.phase1_avg_temp_c.toFixed(1) + '°C' : '—' %> / <%= spec.phase1_avg_moisture_pct !== null ? spec.phase1_avg_moisture_pct.toFixed(1) + '%' : '—' %> / <%= spec.phase1_avg_ph !== null ? spec.phase1_avg_ph.toFixed(1) : '—' %></td></tr>
+        <tr><th>Pasteurization temp / duration</th><td><%- qcCell('phase2', 'pasteurization_temp_c', spec.phase2_pasteurization_temp_c) %> / <%- qcCell('phase2', 'pasteurization_duration_hrs', spec.phase2_pasteurization_duration_hrs) %></td></tr>
+        <tr><th>Conditioning temp / ammonia</th><td><%= spec.phase2_avg_conditioning_temp_c !== null ? spec.phase2_avg_conditioning_temp_c.toFixed(1) + '°C' : '—' %> / <%= spec.phase2_avg_ammonia_ppm !== null ? spec.phase2_avg_ammonia_ppm.toFixed(1) + ' ppm' : '—' %></td></tr>
+        <tr><th>Final moisture / ammonia cleared</th><td><%- qcCell('phase2', 'final_moisture_pct', spec.phase2_final_moisture_pct) %> / <%= v(spec.ammonia_cleared) || '—' %></td></tr>
+        <tr><th>Spawn strain / rate</th><td><%= v(spec.spawn_strain) || '—' %> / <%- qcCell('spawning', 'spawn_rate_pct', spec.spawn_rate_pct) %></td></tr>
+        <tr><th>Spawning date / run end</th><td><%= v(spec.spawning_date) || '—' %> &rarr; <%= v(spec.spawn_run_end_date) || '—' %></td></tr>
+        <tr><th>Compost temp at spawning</th><td><%- qcCell('spawning', 'compost_temp_c', spec.compost_temp_at_spawning_c) %></td></tr>
+        <tr>
+          <th>QC flags raised in production</th>
+          <td>
+            <% if (!spec.qc_flags || !spec.qc_flags.length) { %>
+              <span class="qc-cell qc-ok">None</span>
+            <% } else { %>
+              <% spec.qc_flags.forEach(function(f) { %>
+                <span class="qc-cell qc-<%= f.status %>"><%= f.label %>: <%= f.value %><%= f.unit %> <b><%= f.status.toUpperCase() %></b></span>
+              <% }) %>
+            <% } %>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+<%
+  }
+%>
+
+<section class="card">
+  <h2>Compost Received</h2>
+  <p class="muted">The compost for this batch arrives as a delivery from the compost unit. Recording it here brings across the weight, the cost it carried, and the spec sheet for how that compost was made.</p>
+
+  <% if (receipts.length) { %>
+    <% receipts.forEach(function(r) { %>
+      <div class="qc-legend">
+        Received <strong><%= (r.received_qty_kg || r.qty_kg).toLocaleString('en-IN') %> kg</strong>
+        on <strong><%= v(r.receipt_date) || '—' %></strong>
+        <% if (r.received_qty_kg && r.qty_kg && r.received_qty_kg !== r.qty_kg) { %>
+          <span class="muted">(dispatched <%= r.qty_kg %> kg)</span>
+        <% } %>
+        &nbsp;·&nbsp; Compost cost carried: <strong><%= r.cost_share_npr !== null ? npr(r.cost_share_npr) : '—' %></strong>
+      </div>
+      <% if (r.spec) { specSheet(r.spec); } else { %>
+        <div class="empty-state">No spec sheet was attached to this delivery.</div>
+      <% } %>
+      <% if (can('edit_receipt')) { %>
+        <form method="post" action="/batches/<%= batch.id %>/receipt/<%= r.id %>/unlink" data-confirm="Unlink this delivery from this batch? It goes back to awaiting receipt." style="margin-top:0.6rem">
+          <button class="btn small danger" type="submit">Unlink delivery</button>
+        </form>
+      <% } %>
+    <% }) %>
+  <% } else { %>
+    <div class="empty-state">No compost recorded against this batch yet.</div>
+  <% } %>
+</section>
+
+<% if (!receipts.length && can('edit_receipt')) { %>
+  <section class="card">
+    <h2>Record Arriving Compost</h2>
+    <% if (!unclaimed.length) { %>
+      <div class="empty-state">Nothing waiting to be received. The compost unit records a dispatch when compost leaves their site &mdash; it appears here once they do.</div>
+    <% } else { %>
+      <form class="grid" method="post" action="/batches/<%= batch.id %>/receipt">
+        <div class="field wide">
+          <label>Delivery</label>
+          <select name="dispatch_id" required>
+            <option value="">— Select —</option>
+            <% unclaimed.forEach(function(d) { %>
+              <option value="<%= d.id %>">
+                <%= d.spec && d.spec.batch_code ? d.spec.batch_code : 'Compost batch' %> &middot; <%= d.qty_kg %> kg &middot; dispatched <%= d.dispatch_date %>
+              </option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="field"><label>Receipt Date</label><input type="date" name="receipt_date" value="<%= today %>" required /></div>
+        <div class="field">
+          <label>Weight Received (kg)</label>
+          <input type="number" step="any" name="received_qty_kg" placeholder="if different from dispatched" />
+        </div>
+        <div class="form-actions">
+          <button class="btn" type="submit">Record Receipt</button>
+          <label class="muted"><input type="checkbox" name="advance" value="1" style="width:auto" /> Mark received &amp; move to Casing</label>
+        </div>
+      </form>
+    <% } %>
+  </section>
+<% } %>
+
+<%- include('../partials/footer') %>

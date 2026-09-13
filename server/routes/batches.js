@@ -2,11 +2,12 @@ const express = require('express');
 const db = require('../db');
 const { nepaliFiscalYear } = require('../lib/nepaliFY');
 const { daysBetween } = require('../lib/dates');
-const { STAGE_META } = require('../lib/stages');
+const { STAGE_META, ALL_STAGES, stagesFor, stageKeysFor } = require('../lib/stages');
 const { num, str, asArray } = require('../lib/batchHelpers');
 const { summarizeIntakeItems } = require('../lib/economics');
 const { getBatchMetrics } = require('../lib/analytics');
 const { requirePermission } = require('../lib/auth');
+const { dispatchesForCompostBatch, receiptsForGrowingBatch } = require('../lib/handover');
 
 const router = express.Router();
 
@@ -77,38 +78,53 @@ router.get('/api/nepali-fy', (req, res) => {
 });
 
 // ---- New batch ----
+// What a new batch looks like depends on the workspace it's created in: a
+// growing-unit batch has no raw material recipe at all — its compost arrives as
+// a delivery, recorded at the Receipt stage — so the recipe table is only shown
+// where the batch actually starts from raw materials.
 router.get('/batches/new', (req, res) => {
   const today = new Date().toISOString().slice(0, 10);
-  const rawMaterials = db.prepare('SELECT * FROM raw_materials WHERE active = 1 ORDER BY name').all();
+  const unitType = res.locals.currentFarm.unit_type || 'full';
   res.render('batch-new', {
     prefix: res.locals.currentFarm.code_prefix,
+    unitType,
     today,
     fy: nepaliFiscalYear(today),
     error: null,
     batch_no: '',
     start_date: today,
     notes: '',
-    rawMaterials,
+    rawMaterials: unitType === 'growing' ? [] : db.prepare('SELECT * FROM raw_materials WHERE active = 1 ORDER BY name').all(),
   });
 });
 
-router.post('/batches', requirePermission('edit_prewetting'), (req, res) => {
+router.post('/batches', (req, res) => {
   const b = req.body;
+  const unitType = res.locals.currentFarm.unit_type || 'full';
+  const pipeline = stageKeysFor(unitType);
+  const firstStage = ALL_STAGES[pipeline[0]];
+
+  // Gated on whoever owns the first stage of this workspace's pipeline, rather
+  // than always Pre-Wetting — a growing unit's batches start at Receipt.
+  if (!res.locals.can(firstStage.permission)) {
+    return res.status(403).render('403', { permission: firstStage.permission });
+  }
+
   const effectiveDate = b.start_date || new Date().toISOString().slice(0, 10);
   const fy = nepaliFiscalYear(effectiveDate);
   const cleanBatchNo = (b.batch_no || '').trim();
 
   const rerenderWithError = (error) => {
-    const rawMaterials = db.prepare('SELECT * FROM raw_materials WHERE active = 1 ORDER BY name').all();
     return res.render('batch-new', {
       prefix: res.locals.currentFarm.code_prefix,
+      unitType,
       today: new Date().toISOString().slice(0, 10),
       fy,
       error,
       batch_no: cleanBatchNo,
       start_date: effectiveDate,
       notes: b.notes || '',
-      rawMaterials,
+      rawMaterials: unitType === 'growing' ? [] : db.prepare('SELECT * FROM raw_materials WHERE active = 1 ORDER BY name').all(),
     });
   };
 
@@ -154,8 +170,8 @@ router.post('/batches', requirePermission('edit_prewetting'), (req, res) => {
 
   const createBatch = db.transaction(() => {
     const result = db
-      .prepare("INSERT INTO batches (batch_code, start_date, current_stage, notes, farm_id) VALUES (?, ?, 'prewetting', ?, ?)")
-      .run(batch_code, effectiveDate, str(b.notes), req.farmId);
+      .prepare('INSERT INTO batches (batch_code, start_date, current_stage, notes, farm_id, batch_type) VALUES (?, ?, ?, ?, ?, ?)')
+      .run(batch_code, effectiveDate, firstStage.key, str(b.notes), req.farmId, unitType);
     const batchId = result.lastInsertRowid;
     const insertItem = db.prepare(`
       INSERT INTO intake_items
@@ -201,9 +217,20 @@ router.get('/batches/:id', (req, res) => {
     totalHarvestB += h.grade_b_kg || 0;
   });
 
-  const stageStatus = STAGE_META.map((s) => {
+  const dispatches = dispatchesForCompostBatch(batch.id);
+  const receipts = receiptsForGrowingBatch(batch.id);
+
+  const stageStatus = stagesFor(batch.batch_type).map((s) => {
     let summary = null;
     let days = null;
+    if (s.key === 'dispatch') {
+      const kg = dispatches.reduce((sum, d) => sum + (d.qty_kg || 0), 0);
+      summary = dispatches.length ? `${dispatches.length} delivery(s), ${kg.toFixed(0)} kg out` : null;
+    }
+    if (s.key === 'receipt') {
+      const kg = receipts.reduce((sum, d) => sum + (d.received_qty_kg || d.qty_kg || 0), 0);
+      summary = receipts.length ? `${kg.toFixed(0)} kg received` : null;
+    }
     if (s.key === 'prewetting') {
       const recipe = intakeSummary.totalWetKg ? `${intakeSummary.totalWetKg} kg recipe` : null;
       summary = [recipe, batch.prewetting.in_date].filter(Boolean).join(', ') || null;
@@ -234,6 +261,8 @@ router.get('/batches/:id', (req, res) => {
     totalHarvestA,
     totalHarvestB,
     aGradeEfficiency: metrics.aGradeEfficiency,
+    dispatches,
+    receipts,
   });
 });
 

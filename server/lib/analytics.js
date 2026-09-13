@@ -3,6 +3,28 @@ const qc = require('./qc');
 const { daysBetween } = require('./dates');
 const { summarizeIntakeItems } = require('./economics');
 
+// A growing-unit batch doesn't make its own compost — it receives deliveries
+// from the compost unit, which carry both the weight and a share of what that
+// compost cost to produce. These two read that across, and live here rather
+// than in lib/handover.js only because handover.js needs getBatchMetrics from
+// this file; putting them there would make the two modules require each other.
+function compostCostForGrowingBatch(batchId) {
+  const row = db
+    .prepare('SELECT COALESCE(SUM(cost_share_npr), 0) AS cost, COUNT(*) AS n FROM compost_dispatches WHERE growing_batch_id = ?')
+    .get(batchId);
+  return row.n > 0 && row.cost > 0 ? row.cost : null;
+}
+
+function compostKgForGrowingBatch(batchId) {
+  const row = db
+    .prepare(
+      `SELECT COALESCE(SUM(COALESCE(received_qty_kg, qty_kg)), 0) AS kg, COUNT(*) AS n
+       FROM compost_dispatches WHERE growing_batch_id = ?`
+    )
+    .get(batchId);
+  return row.n > 0 && row.kg > 0 ? row.kg : null;
+}
+
 function avg(nums) {
   const valid = nums.filter((n) => n !== null && n !== undefined && !Number.isNaN(n));
   if (!valid.length) return null;
@@ -81,10 +103,12 @@ function getBatchMetrics(batchId) {
 
   // Compost weight: sum of each room's own fill weight where set, else fall
   // back to the batch-wide spawning fill weight (the common single-room case).
+  // A growing-unit batch has no spawning of its own — its compost arrived as a
+  // delivery — so it falls back to what was received instead.
   const roomsWithWeight = rooms.filter((r) => r.total_fill_weight_kg);
   const totalCompostKg = roomsWithWeight.length
     ? roomsWithWeight.reduce((s, r) => s + r.total_fill_weight_kg, 0)
-    : spawning.fill_weight_kg || null;
+    : spawning.fill_weight_kg || compostKgForGrowingBatch(batchId) || null;
 
   let totalGradeA = 0;
   let totalGradeB = 0;
@@ -96,9 +120,15 @@ function getBatchMetrics(batchId) {
   const yieldPct = totalCompostKg ? (totalHarvestKg / totalCompostKg) * 100 : null;
   const aGradeYieldPct = totalCompostKg ? (totalGradeA / totalCompostKg) * 100 : null;
 
-  // A-Grade Efficiency Ratio: kg of A-grade mushroom produced per NPR 1,000
-  // spent on raw materials. Higher is better — more premium output per rupee.
-  const totalCost = intake.totalCostNpr;
+  // A-Grade Efficiency Ratio: kg of A-grade mushroom produced per NPR 1,000 of
+  // compost cost. Higher is better — more premium output per rupee.
+  //
+  // Where that cost comes from depends on the batch: a full-pipeline batch made
+  // its own compost, so it's the recipe cost. A growing-unit batch bought its
+  // compost in, so it's the cost carried across on the deliveries it received —
+  // otherwise the split would leave every growing batch with no cost basis and
+  // the ratio would silently go blank.
+  const totalCost = intake.totalCostNpr ?? compostCostForGrowingBatch(batchId);
   const aGradeEfficiency = totalCost ? (totalGradeA / totalCost) * 1000 : null;
 
   const lastRoomOut = rooms.map((r) => r.room_out_date).filter(Boolean).sort().pop() || null;
@@ -147,4 +177,11 @@ function getAllBatchMetrics(farmId) {
   return rows.map((b) => getBatchMetrics(b.id));
 }
 
-module.exports = { getBatchMetrics, getAllBatchMetrics, avg, evaluateParam };
+module.exports = {
+  getBatchMetrics,
+  getAllBatchMetrics,
+  avg,
+  evaluateParam,
+  compostCostForGrowingBatch,
+  compostKgForGrowingBatch,
+};

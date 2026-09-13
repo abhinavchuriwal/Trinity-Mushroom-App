@@ -298,12 +298,46 @@ CREATE TABLE IF NOT EXISTS sessions (
 -- deliberately NOT farm-scoped — trainees practising against the real room
 -- codes and real QC ranges is the point. code_prefix keeps training batch
 -- codes from colliding with real ones (TAPL-… vs TRAIN-…).
+-- unit_type decides which stage pipeline a farm's batches run:
+--   'full'    — the original end-to-end pipeline, Pre-Wetting through Room Out.
+--               Kept for the original single-site workspace so historical
+--               batches that spanned both units stay readable as recorded.
+--   'compost' — Pre-Wetting → Phase I → Phase II → Spawning → Dispatch
+--   'growing' — Receipt → Casing → Room In → Harvest → Room Out
 CREATE TABLE IF NOT EXISTS farms (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT UNIQUE NOT NULL,
   code_prefix TEXT NOT NULL,
+  unit_type TEXT NOT NULL DEFAULT 'full',
   is_training INTEGER NOT NULL DEFAULT 0,
   active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+-- A compost batch leaving the compost unit. One dispatch row is one delivery:
+-- its own weight, its own destination, and a spec_snapshot frozen at the moment
+-- it left. The snapshot is what crosses the wall between the two units — the
+-- growing team reads the compost's figures from here rather than being given
+-- access to the compost unit's own records.
+--
+-- Deliveries are rows rather than a column on the growing batch because a
+-- compost run doesn't divide evenly into rooms (one run fills roughly one and a
+-- half). The screens currently allow one delivery per growing batch; lifting
+-- that is a UI change, not a migration.
+CREATE TABLE IF NOT EXISTS compost_dispatches (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  compost_batch_id INTEGER NOT NULL REFERENCES batches(id) ON DELETE CASCADE,
+  dispatch_date TEXT NOT NULL,
+  qty_kg REAL NOT NULL,
+  destination_type TEXT NOT NULL DEFAULT 'internal',
+  buyer_name TEXT,
+  growing_batch_id INTEGER REFERENCES batches(id) ON DELETE SET NULL,
+  receipt_date TEXT,
+  received_qty_kg REAL,
+  spec_snapshot TEXT,
+  cost_share_npr REAL,
+  entered_by TEXT,
+  notes TEXT,
   created_at TEXT DEFAULT (datetime('now'))
 );
 
@@ -350,6 +384,14 @@ if (!roomHarvestsCols.includes('flush_number')) {
   db.exec('ALTER TABLE room_harvests ADD COLUMN flush_number INTEGER');
 }
 
+// Existing workspaces predate the compost/growing split and hold batches that
+// ran the whole pipeline, so they stay 'full'.
+const farmCols = db.prepare('PRAGMA table_info(farms)').all().map((c) => c.name);
+if (!farmCols.includes('unit_type')) {
+  db.exec("ALTER TABLE farms ADD COLUMN unit_type TEXT NOT NULL DEFAULT 'full'");
+}
+
+
 const spawningCols = db.prepare('PRAGMA table_info(spawning)').all().map((c) => c.name);
 if (!spawningCols.includes('spawn_run_end_date')) {
   db.exec('ALTER TABLE spawning ADD COLUMN spawn_run_end_date TEXT');
@@ -390,6 +432,16 @@ if (db.prepare('SELECT COUNT(*) c FROM farms').get().c === 0) {
   db.prepare("INSERT INTO farms (name, code_prefix, is_training) VALUES ('Training / Practice', 'TRAIN', 1)").run();
 }
 
+// The compost unit moving off-site makes each unit its own workspace. Seeded
+// once, by name, so renaming or deactivating them later sticks. The original
+// 'Trinity Agro (Main Farm)' stays a 'full' workspace holding the batches that
+// were run end-to-end on one site before the split.
+const seedUnitFarm = db.prepare(
+  "INSERT OR IGNORE INTO farms (name, code_prefix, unit_type, is_training) VALUES (?, ?, ?, 0)"
+);
+seedUnitFarm.run('Compost Unit', 'TAPL-C', 'compost');
+seedUnitFarm.run('Growing Unit', 'TAPL-G', 'growing');
+
 const batchCols = db.prepare('PRAGMA table_info(batches)').all().map((c) => c.name);
 if (!batchCols.includes('farm_id')) {
   db.exec('ALTER TABLE batches ADD COLUMN farm_id INTEGER REFERENCES farms(id)');
@@ -398,6 +450,17 @@ if (!batchCols.includes('farm_id')) {
 const mainFarm = db.prepare('SELECT id FROM farms WHERE is_training = 0 ORDER BY id LIMIT 1').get();
 if (mainFarm) {
   db.prepare('UPDATE batches SET farm_id = ? WHERE farm_id IS NULL').run(mainFarm.id);
+}
+
+// batch_type is snapshotted from its farm at creation rather than read through
+// the farm each time: if a workspace is ever re-typed, batches already recorded
+// keep the pipeline they were actually run through.
+if (!batchCols.includes('batch_type')) {
+  db.exec("ALTER TABLE batches ADD COLUMN batch_type TEXT NOT NULL DEFAULT 'full'");
+  db.prepare(
+    `UPDATE batches SET batch_type = COALESCE(
+       (SELECT unit_type FROM farms WHERE farms.id = batches.farm_id), 'full')`
+  ).run();
 }
 
 // Existing users predate per-farm access; grant them every farm so nobody is
@@ -505,10 +568,10 @@ if (db.prepare('SELECT COUNT(*) c FROM roles').get().c === 0) {
     ]);
 
     const compostId = insertRole.run('Compost Department', 0).lastInsertRowid;
-    grant(compostId, ['edit_prewetting', 'edit_phase1', 'edit_phase2', 'edit_spawning', 'use_ai_knowledge']);
+    grant(compostId, ['edit_prewetting', 'edit_phase1', 'edit_phase2', 'edit_spawning', 'edit_dispatch', 'use_ai_knowledge']);
 
     const growingId = insertRole.run('Growing Department', 0).lastInsertRowid;
-    grant(growingId, ['edit_casing', 'edit_room_in', 'edit_harvest', 'edit_room_out', 'use_ai_knowledge']);
+    grant(growingId, ['edit_receipt', 'edit_casing', 'edit_room_in', 'edit_harvest', 'edit_room_out', 'use_ai_knowledge']);
   });
   seedRoles();
 }
@@ -517,6 +580,25 @@ if (db.prepare('SELECT COUNT(*) c FROM roles').get().c === 0) {
 // refuses to edit it — so re-assert that on every boot. Without this, any
 // permission added in a later version would silently never reach Admin, since
 // the seed above only runs on a brand-new database.
+// Dispatch/Receipt arrived with the compost-growing split, after the role seed
+// above had already run on existing databases. Give them to the roles that
+// logically own them — a role that can run Spawning should be able to dispatch,
+// one that can do Casing should be able to receive — but exactly once, tracked
+// by a marker, so an admin who later unticks either doesn't find it back after
+// the next restart.
+if (!db.prepare("SELECT value FROM settings WHERE key = 'migrated_handover_perms'").get()) {
+  const grantIfHas = db.prepare(
+    `INSERT OR IGNORE INTO role_permissions (role_id, permission_key)
+     SELECT role_id, ? FROM role_permissions WHERE permission_key = ?`
+  );
+  const migrateHandover = db.transaction(() => {
+    grantIfHas.run('edit_dispatch', 'edit_spawning');
+    grantIfHas.run('edit_receipt', 'edit_casing');
+    db.prepare("INSERT INTO settings (key, value) VALUES ('migrated_handover_perms', '1')").run();
+  });
+  migrateHandover();
+}
+
 const adminRoleRow = db.prepare('SELECT id FROM roles WHERE is_system = 1').get();
 if (adminRoleRow) {
   const grantAdmin = db.prepare('INSERT OR IGNORE INTO role_permissions (role_id, permission_key) VALUES (?, ?)');

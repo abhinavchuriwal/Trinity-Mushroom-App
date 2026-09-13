@@ -4,7 +4,7 @@ const express = require('express');
 const session = require('express-session');
 const db = require('./db');
 const qc = require('./lib/qc');
-const { STAGE_META } = require('./lib/stages');
+const { STAGE_META, stagesFor } = require('./lib/stages');
 const { requireAuth } = require('./lib/auth');
 const SqliteSessionStore = require('./lib/sqliteSessionStore');
 
@@ -71,6 +71,7 @@ app.use((req, res, next) => {
   res.locals.v = (val) => (val === null || val === undefined ? '' : val);
   res.locals.daysLabel = (days) => (days === null || days === undefined ? '—' : `${days} day${days === 1 ? '' : 's'}`);
   res.locals.STAGE_META = STAGE_META;
+  res.locals.stagesFor = stagesFor;
   // Renders <option>s for a master-data dropdown (growing rooms/tunnels/bunkers).
   // If currentValue doesn't match any active code — e.g. a batch recorded before
   // that code existed, or before farm master data was set up at all — it's kept
@@ -100,6 +101,7 @@ app.use(requireAuth);
 app.use('/', require('./routes/batches'));
 app.use('/', require('./routes/stages'));
 app.use('/', require('./routes/rooms'));
+app.use('/', require('./routes/handover'));
 app.use('/harvest-log', require('./routes/harvestLog'));
 app.use('/settings', require('./routes/settings'));
 app.use('/raw-materials', require('./routes/rawMaterials'));

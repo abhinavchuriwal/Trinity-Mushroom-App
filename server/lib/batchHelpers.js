@@ -41,11 +41,18 @@ function upsert(table, batchId, fields) {
 // while you're in the real farm) can't be reached by typing its URL — callers
 // treat "not found" and "not your farm" identically, as a 404.
 function getBatchHeader(id, farmId) {
+  // batch_type is part of the header: every stage page's tab bar renders the
+  // batch's own pipeline from it, and without it a compost or growing batch
+  // silently falls back to showing all eight stages of the old single-site one.
   if (farmId === undefined || farmId === null) {
-    return db.prepare('SELECT id, batch_code, start_date, current_stage, status, farm_id FROM batches WHERE id = ?').get(id);
+    return db
+      .prepare('SELECT id, batch_code, start_date, current_stage, status, farm_id, batch_type FROM batches WHERE id = ?')
+      .get(id);
   }
   return db
-    .prepare('SELECT id, batch_code, start_date, current_stage, status, farm_id FROM batches WHERE id = ? AND farm_id = ?')
+    .prepare(
+      'SELECT id, batch_code, start_date, current_stage, status, farm_id, batch_type FROM batches WHERE id = ? AND farm_id = ?'
+    )
     .get(id, farmId);
 }
 

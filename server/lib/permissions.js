@@ -7,6 +7,8 @@ const PERMISSIONS = [
   { key: 'edit_phase1', label: 'Edit Phase I Composting', group: 'Compost Department' },
   { key: 'edit_phase2', label: 'Edit Phase II', group: 'Compost Department' },
   { key: 'edit_spawning', label: 'Edit Spawning', group: 'Compost Department' },
+  { key: 'edit_dispatch', label: 'Dispatch compost out', group: 'Compost Department' },
+  { key: 'edit_receipt', label: 'Receive compost in', group: 'Growing Department' },
   { key: 'edit_casing', label: 'Edit Casing', group: 'Growing Department' },
   { key: 'edit_room_in', label: 'Edit Room In', group: 'Growing Department' },
   { key: 'edit_harvest', label: 'Edit Harvest (incl. Log Harvest)', group: 'Growing Department' },

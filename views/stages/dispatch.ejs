@@ -1,0 +1,131 @@
+<% var title = batch.batch_code + ' · Dispatch' %>
+<%- include('../partials/header') %>
+<%- include('../partials/batch-banner') %>
+
+<section class="card">
+  <h2>Dispatch Compost</h2>
+  <p class="muted">Record compost leaving the site. Each delivery carries a copy of this batch's compost spec &mdash; the growing unit sees that spec sheet when they receive it, and a share of this batch's raw material cost travels with it.</p>
+
+  <div class="qc-legend">
+    Compost produced: <strong><%= producedKg !== null ? producedKg.toLocaleString('en-IN') + ' kg' : '— (set bags × kg/bag on Spawning)' %></strong>
+    &nbsp;·&nbsp; Dispatched so far: <strong><%= dispatchedKg.toLocaleString('en-IN') %> kg</strong>
+    <% if (producedKg) { %>
+      &nbsp;·&nbsp; Remaining: <strong><%= Math.max(0, producedKg - dispatchedKg).toLocaleString('en-IN') %> kg</strong>
+    <% } %>
+  </div>
+
+  <% if (dispatches.length) { %>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Date</th><th>Qty (kg)</th><th>Destination</th><th>Status</th><th>Cost carried</th><th>By</th><th>Notes</th><th></th></tr></thead>
+        <tbody>
+          <% dispatches.forEach(function(d) { %>
+            <tr>
+              <td><%= d.dispatch_date %></td>
+              <td><%= d.qty_kg %></td>
+              <td>
+                <% if (d.destination_type === 'external') { %>
+                  <span class="stage-pill">Sold</span> <%= v(d.buyer_name) || '—' %>
+                <% } else { %>
+                  <span class="stage-pill">Growing Unit</span>
+                <% } %>
+              </td>
+              <td>
+                <% if (d.destination_type === 'external') { %>
+                  <span class="muted">Dispatched</span>
+                <% } else if (d.growing_batch_id) { %>
+                  <span class="qc-cell qc-ok">Received <%= v(d.receipt_date) %></span>
+                <% } else { %>
+                  <span class="qc-cell qc-high">Awaiting receipt</span>
+                <% } %>
+              </td>
+              <td><%= d.cost_share_npr !== null ? npr(d.cost_share_npr) : '—' %></td>
+              <td><%= v(d.entered_by) %></td>
+              <td><%= v(d.notes) %></td>
+              <td>
+                <% if (can('edit_dispatch') && !d.growing_batch_id) { %>
+                  <form method="post" action="/batches/<%= batch.id %>/dispatch/<%= d.id %>/delete" data-confirm="Delete this dispatch record?">
+                    <button class="btn small danger" type="submit">Del</button>
+                  </form>
+                <% } %>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } else { %>
+    <div class="empty-state">Nothing dispatched from this batch yet.</div>
+  <% } %>
+
+  <% if (can('edit_dispatch')) { %>
+    <h3 style="margin-top:1.25rem">Record a Delivery</h3>
+    <form class="grid" method="post" action="/batches/<%= batch.id %>/dispatch">
+      <div class="field"><label>Dispatch Date</label><input type="date" name="dispatch_date" value="<%= today %>" required /></div>
+      <div class="field"><label>Quantity (kg)</label><input type="number" step="any" name="qty_kg" required /></div>
+      <div class="field">
+        <label>Going To</label>
+        <select name="destination_type" id="dest-type">
+          <option value="internal">Our Growing Unit</option>
+          <option value="external">Sold to another farm</option>
+        </select>
+      </div>
+      <div class="field" id="buyer-field" style="display:none"><label>Buyer</label><input type="text" name="buyer_name" placeholder="Farm / customer name" /></div>
+      <div class="field"><label>Entered By</label><input type="text" name="entered_by" /></div>
+      <div class="field wide"><label>Notes</label><input type="text" name="notes" /></div>
+      <div class="form-actions">
+        <button class="btn" type="submit">Record Dispatch</button>
+        <label class="muted"><input type="checkbox" name="advance" value="1" style="width:auto" /> Mark this batch fully dispatched &amp; close it</label>
+      </div>
+    </form>
+  <% } %>
+</section>
+
+<section class="card">
+  <h2>Compost Spec Sheet</h2>
+  <p class="muted">A copy of this is frozen onto every delivery at dispatch, and is what the growing unit sees on receipt. It records the compost as it left &mdash; later edits to this batch don't change deliveries already sent.</p>
+  <% if (!spec) { %>
+    <div class="empty-state">No data recorded for this batch yet.</div>
+  <% } else { %>
+    <div class="table-scroll">
+      <table>
+        <tbody>
+          <tr><th style="width:18rem">C:N Ratio</th><td><%= spec.cn_ratio !== null ? spec.cn_ratio.toFixed(1) + ':1' : '—' %></td></tr>
+          <tr><th>Recipe weight (wet / dry est.)</th><td><%= spec.recipe_wet_kg ? spec.recipe_wet_kg + ' kg' : '—' %> / <%= spec.recipe_dry_kg ? spec.recipe_dry_kg.toFixed(1) + ' kg' : '—' %></td></tr>
+          <tr><th>Phase I avg temp / moisture / pH</th><td><%= spec.phase1_avg_temp_c !== null ? spec.phase1_avg_temp_c.toFixed(1) + '°C' : '—' %> / <%= spec.phase1_avg_moisture_pct !== null ? spec.phase1_avg_moisture_pct.toFixed(1) + '%' : '—' %> / <%= spec.phase1_avg_ph !== null ? spec.phase1_avg_ph.toFixed(1) : '—' %></td></tr>
+          <tr><th>Pasteurization temp / duration</th><td><%= v(spec.phase2_pasteurization_temp_c) || '—' %>°C / <%= v(spec.phase2_pasteurization_duration_hrs) || '—' %> hrs</td></tr>
+          <tr><th>Conditioning temp / ammonia</th><td><%= spec.phase2_avg_conditioning_temp_c !== null ? spec.phase2_avg_conditioning_temp_c.toFixed(1) + '°C' : '—' %> / <%= spec.phase2_avg_ammonia_ppm !== null ? spec.phase2_avg_ammonia_ppm.toFixed(1) + ' ppm' : '—' %></td></tr>
+          <tr><th>Final moisture / ammonia cleared</th><td><%= v(spec.phase2_final_moisture_pct) || '—' %>% / <%= v(spec.ammonia_cleared) || '—' %></td></tr>
+          <tr><th>Spawn strain / rate</th><td><%= v(spec.spawn_strain) || '—' %> / <%= v(spec.spawn_rate_pct) || '—' %>%</td></tr>
+          <tr><th>Spawning date / run end</th><td><%= v(spec.spawning_date) || '—' %> &rarr; <%= v(spec.spawn_run_end_date) || '—' %></td></tr>
+          <tr><th>Compost temp at spawning</th><td><%= v(spec.compost_temp_at_spawning_c) || '—' %>°C</td></tr>
+          <tr>
+            <th>QC flags</th>
+            <td>
+              <% if (!spec.qc_flags || !spec.qc_flags.length) { %>
+                <span class="qc-cell qc-ok">None</span>
+              <% } else { %>
+                <% spec.qc_flags.forEach(function(f) { %>
+                  <span class="qc-cell qc-<%= f.status %>"><%= f.label %>: <%= f.value %><%= f.unit %> <b><%= f.status.toUpperCase() %></b></span>
+                <% }) %>
+              <% } %>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</section>
+
+<script>
+  (function () {
+    var sel = document.getElementById('dest-type');
+    var buyer = document.getElementById('buyer-field');
+    if (!sel || !buyer) return;
+    function sync() { buyer.style.display = sel.value === 'external' ? '' : 'none'; }
+    sel.addEventListener('change', sync);
+    sync();
+  })();
+</script>
+
+<%- include('../partials/footer') %>

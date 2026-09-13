@@ -25,6 +25,16 @@
       <textarea id="notes" name="notes" placeholder="e.g. special conditions"><%= notes %></textarea>
     </div>
 
+    <% if (unitType === 'growing') { %>
+      <div class="field wide">
+        <div class="qc-legend">
+          This is a growing-unit batch, so it has no raw material recipe of its own &mdash;
+          its compost is made by the compost unit. Once created, record the arriving delivery
+          on the <strong>Compost Receipt</strong> step, which brings across the weight, the cost,
+          and the spec sheet for how that compost was made.
+        </div>
+      </div>
+    <% } else { %>
     <div class="field wide">
       <h3 style="margin-top:0.5rem">Raw Material Recipe</h3>
       <div class="qc-legend">
@@ -67,6 +77,7 @@
         &nbsp;·&nbsp; Batch C:N ratio (estimate): <strong id="sum-cn">&mdash;</strong>
       </div>
     </div>
+    <% } %>
 
     <div class="form-actions">
       <button class="btn" type="submit">Create Batch</button>
@@ -82,8 +93,10 @@
 
 <script>
 (function () {
-  var materials = JSON.parse(document.getElementById('material-options').textContent);
   var tbody = document.getElementById('recipe-body');
+  // A growing-unit batch has no recipe table on the page at all.
+  if (!tbody) return;
+  var materials = JSON.parse(document.getElementById('material-options').textContent);
   var rowCount = 0;
 
   function materialOptionsHtml() {
@@ -188,7 +201,11 @@
 
   document.getElementById('add-row-btn').addEventListener('click', addRow);
   addRow();
+})();
 
+// Separate from the recipe builder above, which isn't on the page for a
+// growing-unit batch — the code preview is needed either way.
+(function () {
   // Live batch-code preview: recompute the Nepali fiscal year as the date changes.
   var dateEl = document.getElementById('start_date');
   var noEl = document.getElementById('batch_no');

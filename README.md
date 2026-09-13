@@ -73,7 +73,33 @@ To restore: stop the server, replace `trinity-agro.db` with a backup (deleting a
   choices and defaults used when building a batch's recipe. Editing or
   deactivating a material here never changes costs/percentages already recorded
   on past batches — those are snapshotted at the time each recipe line was added.
-- **Departments** — the pipeline is split in two: **Compost Dept** owns
+- **Running the compost unit as a separate operation** — when compost is made
+  on a different site under its own management, each unit gets its own
+  workspace and its own batches, joined by a delivery record:
+  - A **Compost Unit** batch runs Pre-Wetting → Phase I → Phase II → Spawning →
+    **Dispatch**, and a **Growing Unit** batch runs **Compost Receipt** →
+    Casing → Room In → Harvest → Room Out. Neither side can open the other's
+    batches; Admin and Farm Manager have both workspaces and can switch.
+  - **Dispatch** records compost leaving: date, kg, and whether it's going to
+    your own growing unit or being sold to another farm (buyer name and
+    quantity only — no sale value, matching the rest of the app). One compost
+    batch can have several deliveries; the screens currently allow one delivery
+    per growing batch, which is a UI limit rather than a structural one.
+  - Each delivery **freezes a compost spec sheet** at dispatch — C:N ratio,
+    Phase I averages, pasteurisation temperature and hold, conditioning temp
+    and ammonia, final moisture, spawn strain and rate, compost temperature at
+    spawning, and any QC flags raised in production. That sheet is what the
+    growing team sees on receipt, and it's the only thing that crosses between
+    the two workspaces. It's a snapshot, not a live lookup, so it describes the
+    compost as it left rather than as the compost batch reads months later.
+  - **Cost travels with the compost**, by weight: 8,000 kg out of a 12,000 kg
+    batch carries two-thirds of that batch's raw material cost. That's what
+    keeps the growing unit's A-Grade Efficiency Ratio meaningful once it no
+    longer has a recipe of its own.
+  - Batches recorded **before** the split keep the original end-to-end pipeline
+    and stay readable exactly as entered — they aren't retro-fitted into the
+    new shape.
+- **Departments** — within a single-site workspace, the pipeline is split in two: **Compost Dept** owns
   Pre-Wetting, Phase I, Phase II and Spawning; **Growing Dept** owns Casing,
   Room In, Harvest and Room Out. Everyone logged in can *view* every stage of
   every batch (full traceability — compost staff can see how their compost
