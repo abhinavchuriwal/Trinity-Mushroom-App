@@ -59,14 +59,15 @@ router.post('/', requirePermission('edit_harvest'), (req, res) => {
     return res.redirect(`/harvest-log?error=${encodeURIComponent('Pick a room that is currently occupied.')}`);
   }
   db.prepare(
-    `INSERT INTO room_harvests (room_id, batch_id, harvest_date, grade_a_kg, grade_b_kg, entered_by, notes)
-     VALUES (@room_id, @batch_id, @harvest_date, @grade_a_kg, @grade_b_kg, @entered_by, @notes)`
+    `INSERT INTO room_harvests (room_id, batch_id, harvest_date, grade_a_kg, grade_b_kg, flush_number, entered_by, notes)
+     VALUES (@room_id, @batch_id, @harvest_date, @grade_a_kg, @grade_b_kg, @flush_number, @entered_by, @notes)`
   ).run({
     room_id: room.id,
     batch_id: room.batch_id,
     harvest_date: str(b.harvest_date) || new Date().toISOString().slice(0, 10),
     grade_a_kg: num(b.grade_a_kg),
     grade_b_kg: num(b.grade_b_kg),
+    flush_number: num(b.flush_number),
     entered_by: str(b.entered_by),
     notes: str(b.notes),
   });

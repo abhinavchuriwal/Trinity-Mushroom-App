@@ -79,14 +79,15 @@ router.post('/batches/:id/rooms/:roomId/harvests', requirePermission('edit_harve
   const b = req.body;
   if (!str(b.harvest_date)) return res.redirect(`/batches/${id}/harvest`);
   db.prepare(
-    `INSERT INTO room_harvests (room_id, batch_id, harvest_date, grade_a_kg, grade_b_kg, entered_by, notes)
-     VALUES (@room_id, @batch_id, @harvest_date, @grade_a_kg, @grade_b_kg, @entered_by, @notes)`
+    `INSERT INTO room_harvests (room_id, batch_id, harvest_date, grade_a_kg, grade_b_kg, flush_number, entered_by, notes)
+     VALUES (@room_id, @batch_id, @harvest_date, @grade_a_kg, @grade_b_kg, @flush_number, @entered_by, @notes)`
   ).run({
     room_id: roomId,
     batch_id: id,
     harvest_date: str(b.harvest_date),
     grade_a_kg: num(b.grade_a_kg),
     grade_b_kg: num(b.grade_b_kg),
+    flush_number: num(b.flush_number),
     entered_by: str(b.entered_by),
     notes: str(b.notes),
   });

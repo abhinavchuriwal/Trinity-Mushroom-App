@@ -207,6 +207,7 @@ CREATE TABLE IF NOT EXISTS room_harvests (
   grade_b_kg REAL,
   price_per_kg_a_npr REAL,
   price_per_kg_b_npr REAL,
+  flush_number INTEGER,
   entered_by TEXT,
   notes TEXT,
   created_at TEXT DEFAULT (datetime('now'))
@@ -339,6 +340,14 @@ if (!intakeItemsColsAfter.includes('moisture_pct_actual')) {
 const rawMaterialsCols = db.prepare('PRAGMA table_info(raw_materials)').all().map((c) => c.name);
 if (!rawMaterialsCols.includes('moisture_pct')) {
   db.exec('ALTER TABLE raw_materials ADD COLUMN moisture_pct REAL');
+}
+
+// Which flush a pick came from (1st/2nd/3rd), recorded by hand at entry time.
+// Left null on entries made before this existed, and on any pick where the
+// picker didn't say — the yield totals never depend on it.
+const roomHarvestsCols = db.prepare('PRAGMA table_info(room_harvests)').all().map((c) => c.name);
+if (!roomHarvestsCols.includes('flush_number')) {
+  db.exec('ALTER TABLE room_harvests ADD COLUMN flush_number INTEGER');
 }
 
 const spawningCols = db.prepare('PRAGMA table_info(spawning)').all().map((c) => c.name);
