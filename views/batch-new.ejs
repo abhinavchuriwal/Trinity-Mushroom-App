@@ -26,20 +26,30 @@
     </div>
 
     <div class="field wide">
-      <h3 style="margin-top:0.5rem">Raw Material Recipe (Dry Weight)</h3>
+      <h3 style="margin-top:0.5rem">Raw Material Recipe</h3>
       <div class="qc-legend">
-        Enter tested Carbon %/Nitrogen % if you have lab data for this delivery &mdash; otherwise leave blank and the material's standard % (set in Raw Materials) is used automatically for the C:N calculation.
+        Qty is the wet, as-weighed amount. Carbon %/Nitrogen %/Moisture % are all dry-basis &mdash;
+        leave any of them blank to use the material's standard value (set in Raw Materials); enter a
+        tested/actual value here if you have it for this specific delivery. Moisture matters even when
+        you don't have a lab number: materials vary a lot (fresh manure vs. air-dried straw), and the
+        C:N ratio is calculated from dry matter, not the wet weight you're weighing out.
+      </div>
+      <div class="qc-legend" style="margin-top:0.35rem">
+        If manure was stored pre-mixed with gypsum, add <strong>Gypsum</strong> as its own line for its
+        actual weight rather than folding it into the manure's weight &mdash; gypsum contributes no
+        carbon or nitrogen, so lumping it in overstates the manure line's C and N.
       </div>
       <div class="chart-wrap">
         <table id="recipe-table">
           <thead>
             <tr>
               <th style="min-width:12rem">Material</th>
-              <th>Qty (kg)</th>
+              <th>Qty, wet (kg)</th>
               <th>Cost (NPR/kg)</th>
               <th>Amount (NPR)</th>
               <th>Carbon % (actual)</th>
               <th>Nitrogen % (actual)</th>
+              <th>Moisture % (actual)</th>
               <th>Notes</th>
               <th></th>
             </tr>
@@ -50,7 +60,8 @@
       <button type="button" class="btn secondary small" id="add-row-btn" style="margin-top:0.5rem">+ Add Material</button>
 
       <div class="qc-legend" style="margin-top:0.75rem">
-        Total dry weight: <strong id="sum-kg">0 kg</strong>
+        Total wet weight: <strong id="sum-kg">0 kg</strong>
+        &nbsp;·&nbsp; Total dry weight (est.): <strong id="sum-kg-dry">0 kg</strong>
         &nbsp;·&nbsp; Total recipe cost: <strong id="sum-cost">NPR 0</strong>
         &nbsp;·&nbsp; Cost per kg compost mix: <strong id="sum-perkg">&mdash;</strong>
         &nbsp;·&nbsp; Batch C:N ratio (estimate): <strong id="sum-cn">&mdash;</strong>
@@ -66,7 +77,7 @@
 <p class="muted">Batch code format: <strong><%= prefix %>-Nepali Fiscal Year-Your Number</strong> (e.g. <%= prefix %>-<%= fy %>-001). The fiscal year is computed from the start date (Shrawan&ndash;Ashadh). Your batch number just needs to be unique within that fiscal year.</p>
 
 <script id="material-options" type="application/json">
-  <%- JSON.stringify(rawMaterials.map(function(m){ return {id: m.id, name: m.name, cost: m.default_cost_per_kg_npr, carbon: m.carbon_pct, nitrogen: m.nitrogen_pct}; })) %>
+  <%- JSON.stringify(rawMaterials.map(function(m){ return {id: m.id, name: m.name, cost: m.default_cost_per_kg_npr, carbon: m.carbon_pct, nitrogen: m.nitrogen_pct, moisture: m.moisture_pct}; })) %>
 </script>
 
 <script>
@@ -96,6 +107,7 @@
       '<td class="amount-cell muted">&mdash;</td>' +
       '<td><input type="number" step="any" name="carbon_pct_actual[]" class="carbon-input" style="width:5.5rem" placeholder="std" /></td>' +
       '<td><input type="number" step="any" name="nitrogen_pct_actual[]" class="nitrogen-input" style="width:5.5rem" placeholder="std" /></td>' +
+      '<td><input type="number" step="any" name="moisture_pct_actual[]" class="moisture-input" style="width:5.5rem" placeholder="std" /></td>' +
       '<td><input type="text" name="item_notes[]" style="width:8rem" /></td>' +
       '<td><button type="button" class="btn small danger remove-row">Del</button></td>';
     tbody.appendChild(tr);
@@ -105,6 +117,7 @@
     var costInput = tr.querySelector('.cost-input');
     var carbonInput = tr.querySelector('.carbon-input');
     var nitrogenInput = tr.querySelector('.nitrogen-input');
+    var moistureInput = tr.querySelector('.moisture-input');
 
     select.addEventListener('change', function () {
       var m = materials.filter(function (m) { return String(m.id) === select.value; })[0];
@@ -114,10 +127,12 @@
         costInput.value = m.cost !== null ? m.cost : '';
         carbonInput.placeholder = m.carbon !== null ? 'std: ' + m.carbon : 'std';
         nitrogenInput.placeholder = m.nitrogen !== null ? 'std: ' + m.nitrogen : 'std';
+        moistureInput.placeholder = m.moisture !== null ? 'std: ' + m.moisture : 'std';
       } else {
         nameInput.style.display = '';
         carbonInput.placeholder = 'std';
         nitrogenInput.placeholder = 'std';
+        moistureInput.placeholder = 'std';
       }
       recalc();
     });
@@ -127,40 +142,47 @@
       recalc();
     });
 
-    tr.querySelectorAll('.qty-input, .cost-input, .carbon-input, .nitrogen-input').forEach(function (el) {
+    tr.querySelectorAll('.qty-input, .cost-input, .carbon-input, .nitrogen-input, .moisture-input').forEach(function (el) {
       el.addEventListener('input', recalc);
     });
   }
 
+  // Mirrors server/lib/economics.js's summarizeIntakeItems exactly, so this
+  // live preview matches what actually gets saved once the form is submitted.
   function recalc() {
-    var totalKg = 0, totalCost = 0, hasCost = false, carbonW = 0, nitrogenW = 0;
+    var totalWetKg = 0, totalDryKg = 0, totalCost = 0, hasCost = false, carbonW = 0, nitrogenW = 0;
     tbody.querySelectorAll('tr').forEach(function (tr) {
-      var qty = parseFloat(tr.querySelector('.qty-input').value) || 0;
+      var wetKg = parseFloat(tr.querySelector('.qty-input').value) || 0;
       var cost = tr.querySelector('.cost-input').value;
       var select = tr.querySelector('.mat-select');
       var m = materials.filter(function (m) { return String(m.id) === select.value; })[0];
       var carbonActual = tr.querySelector('.carbon-input').value;
       var nitrogenActual = tr.querySelector('.nitrogen-input').value;
+      var moistureActual = tr.querySelector('.moisture-input').value;
       var carbon = carbonActual !== '' ? parseFloat(carbonActual) : (m && m.carbon !== null ? m.carbon : null);
       var nitrogen = nitrogenActual !== '' ? parseFloat(nitrogenActual) : (m && m.nitrogen !== null ? m.nitrogen : null);
+      var moisture = moistureActual !== '' ? parseFloat(moistureActual) : (m && m.moisture !== null ? m.moisture : null);
+      var dryKg = (moisture !== null && !isNaN(moisture)) ? wetKg * (1 - moisture / 100) : wetKg;
 
-      totalKg += qty;
+      totalWetKg += wetKg;
+      totalDryKg += dryKg;
       var amountCell = tr.querySelector('.amount-cell');
-      if (cost !== '' && qty) {
-        var amount = qty * parseFloat(cost);
+      if (cost !== '' && wetKg) {
+        var amount = wetKg * parseFloat(cost);
         totalCost += amount;
         hasCost = true;
         amountCell.textContent = 'NPR ' + amount.toLocaleString('en-IN', { maximumFractionDigits: 2 });
       } else {
         amountCell.textContent = '—';
       }
-      if (carbon !== null && !isNaN(carbon)) carbonW += qty * carbon;
-      if (nitrogen !== null && !isNaN(nitrogen)) nitrogenW += qty * nitrogen;
+      if (carbon !== null && !isNaN(carbon)) carbonW += dryKg * carbon;
+      if (nitrogen !== null && !isNaN(nitrogen)) nitrogenW += dryKg * nitrogen;
     });
 
-    document.getElementById('sum-kg').textContent = totalKg ? totalKg.toLocaleString('en-IN') + ' kg' : '0 kg';
+    document.getElementById('sum-kg').textContent = totalWetKg ? totalWetKg.toLocaleString('en-IN') + ' kg' : '0 kg';
+    document.getElementById('sum-kg-dry').textContent = totalDryKg ? totalDryKg.toLocaleString('en-IN', { maximumFractionDigits: 1 }) + ' kg' : '0 kg';
     document.getElementById('sum-cost').textContent = hasCost ? 'NPR ' + totalCost.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : 'NPR 0';
-    document.getElementById('sum-perkg').textContent = (hasCost && totalKg) ? 'NPR ' + (totalCost / totalKg).toLocaleString('en-IN', { maximumFractionDigits: 2 }) + '/kg' : '—';
+    document.getElementById('sum-perkg').textContent = (hasCost && totalWetKg) ? 'NPR ' + (totalCost / totalWetKg).toLocaleString('en-IN', { maximumFractionDigits: 2 }) + '/kg' : '—';
     document.getElementById('sum-cn').textContent = nitrogenW > 0 ? (carbonW / nitrogenW).toFixed(1) + ':1' : '—';
   }
 

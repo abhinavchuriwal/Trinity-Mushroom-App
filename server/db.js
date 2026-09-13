@@ -44,18 +44,23 @@ CREATE TABLE IF NOT EXISTS raw_materials (
   default_cost_per_kg_npr REAL,
   carbon_pct REAL,
   nitrogen_pct REAL,
+  moisture_pct REAL,
   notes TEXT,
   active INTEGER NOT NULL DEFAULT 1,
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now'))
 );
 
--- Line items for a batch's raw material recipe. Cost and the "standard" C/N %
--- are snapshotted at entry time (copied from raw_materials when selected, but
--- editable) so a later edit or deletion of the master material never changes a
--- past batch's recorded cost or C:N contribution. carbon_pct_actual /
--- nitrogen_pct_actual hold lab-tested values for this specific delivery when
--- known; the batch C:N calculation uses actual when present, standard otherwise.
+-- Line items for a batch's raw material recipe. qty_kg is the WET, as-weighed
+-- delivery weight — Carbon%/Nitrogen%/Moisture% are all dry-basis, so the C:N
+-- calculation must convert to dry matter (qty_kg * (1 - moisture%/100)) before
+-- weighting; using qty_kg directly overstates C and N whenever moisture varies
+-- between ingredients (it did, for years, before moisture tracking existed).
+-- Cost and the "standard" values are snapshotted at entry time (copied from
+-- raw_materials when selected, but editable) so a later edit or deletion of the
+-- master material never changes a past batch's recorded figures. The _actual
+-- columns hold delivery-specific tested/weighed values when known; calculations
+-- use actual when present, standard otherwise.
 CREATE TABLE IF NOT EXISTS intake_items (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   batch_id INTEGER NOT NULL REFERENCES batches(id) ON DELETE CASCADE,
@@ -67,6 +72,8 @@ CREATE TABLE IF NOT EXISTS intake_items (
   nitrogen_pct_standard REAL,
   carbon_pct_actual REAL,
   nitrogen_pct_actual REAL,
+  moisture_pct_standard REAL,
+  moisture_pct_actual REAL,
   notes TEXT,
   created_at TEXT DEFAULT (datetime('now'))
 );
@@ -322,6 +329,17 @@ if (!intakeItemsColsAfter.includes('carbon_pct_actual')) {
 if (!intakeItemsColsAfter.includes('nitrogen_pct_actual')) {
   db.exec('ALTER TABLE intake_items ADD COLUMN nitrogen_pct_actual REAL');
 }
+if (!intakeItemsColsAfter.includes('moisture_pct_standard')) {
+  db.exec('ALTER TABLE intake_items ADD COLUMN moisture_pct_standard REAL');
+}
+if (!intakeItemsColsAfter.includes('moisture_pct_actual')) {
+  db.exec('ALTER TABLE intake_items ADD COLUMN moisture_pct_actual REAL');
+}
+
+const rawMaterialsCols = db.prepare('PRAGMA table_info(raw_materials)').all().map((c) => c.name);
+if (!rawMaterialsCols.includes('moisture_pct')) {
+  db.exec('ALTER TABLE raw_materials ADD COLUMN moisture_pct REAL');
+}
 
 const spawningCols = db.prepare('PRAGMA table_info(spawning)').all().map((c) => c.name);
 if (!spawningCols.includes('spawn_run_end_date')) {
@@ -429,19 +447,26 @@ db.prepare("DELETE FROM qc_parameters WHERE stage = 'intake' AND param_key = 'st
 // purpose — Nepal pricing varies by supplier/season and should be entered
 // locally, not assumed. Everything here is editable/deletable in Raw Materials.
 const insertMaterial = db.prepare(`
-  INSERT OR IGNORE INTO raw_materials (name, default_cost_per_kg_npr, carbon_pct, nitrogen_pct, notes)
-  VALUES (@name, @default_cost_per_kg_npr, @carbon_pct, @nitrogen_pct, @notes)
+  INSERT OR IGNORE INTO raw_materials (name, default_cost_per_kg_npr, carbon_pct, nitrogen_pct, moisture_pct, notes)
+  VALUES (@name, @default_cost_per_kg_npr, @carbon_pct, @nitrogen_pct, @moisture_pct, @notes)
 `);
 const defaultMaterials = [
-  { name: 'Paddy (Rice) Straw', default_cost_per_kg_npr: null, carbon_pct: 42, nitrogen_pct: 0.6, notes: 'Typical C:N ~70:1 — calibrate to local supply' },
-  { name: 'Wheat Straw', default_cost_per_kg_npr: null, carbon_pct: 46, nitrogen_pct: 0.5, notes: 'Typical C:N ~90:1 — calibrate to local supply' },
-  { name: 'Chicken Manure / Poultry Litter', default_cost_per_kg_npr: null, carbon_pct: 32, nitrogen_pct: 3.5, notes: 'Typical C:N ~9:1 — calibrate to local supply' },
-  { name: 'Wheat Bran', default_cost_per_kg_npr: null, carbon_pct: 40, nitrogen_pct: 2.5, notes: 'Typical C:N ~16:1 — calibrate to local supply' },
-  { name: 'Urea', default_cost_per_kg_npr: null, carbon_pct: 0, nitrogen_pct: 46, notes: 'Pure nitrogen source, no carbon contribution' },
-  { name: 'Gypsum', default_cost_per_kg_npr: null, carbon_pct: 0, nitrogen_pct: 0, notes: 'Structural/pH additive — no C or N contribution' },
+  { name: 'Paddy (Rice) Straw', default_cost_per_kg_npr: null, carbon_pct: 42, nitrogen_pct: 0.6, moisture_pct: 12, notes: 'Typical C:N ~70:1, moisture ~12% air-dried — calibrate to local supply' },
+  { name: 'Wheat Straw', default_cost_per_kg_npr: null, carbon_pct: 46, nitrogen_pct: 0.5, moisture_pct: 12, notes: 'Typical C:N ~90:1, moisture ~12% air-dried — calibrate to local supply' },
+  { name: 'Chicken Manure / Poultry Litter', default_cost_per_kg_npr: null, carbon_pct: 32, nitrogen_pct: 3.5, moisture_pct: 40, notes: 'Typical C:N ~9:1. Moisture varies a lot by bird age, diet, litter type and barn conditions — always enter the actual moisture (and actual C/N if tested) for each delivery rather than relying on this default. If gypsum was mixed in at storage to bind ammonia, enter Gypsum as its own recipe line for its actual weight rather than folding it into this material’s weight — gypsum contributes no carbon or nitrogen, so lumping it in overstates this delivery’s C and N.' },
+  { name: 'Wheat Bran', default_cost_per_kg_npr: null, carbon_pct: 40, nitrogen_pct: 2.5, moisture_pct: 10, notes: 'Typical C:N ~16:1, moisture ~10% — calibrate to local supply' },
+  { name: 'Urea', default_cost_per_kg_npr: null, carbon_pct: 0, nitrogen_pct: 46, moisture_pct: 0.5, notes: 'Pure nitrogen source, no carbon contribution, negligible moisture' },
+  { name: 'Gypsum', default_cost_per_kg_npr: null, carbon_pct: 0, nitrogen_pct: 0, moisture_pct: 3, notes: 'Structural/pH/ammonia-binding additive — no C or N contribution. Enter as its own recipe line with its own actual weight whenever it’s mixed into stored manure, rather than lumping its weight into the manure line.' },
 ];
 const seedMaterials = db.transaction((rows) => rows.forEach((r) => insertMaterial.run(r)));
 seedMaterials(defaultMaterials);
+
+// Back-fill moisture_pct on the seeded materials above for databases created
+// before this column existed — INSERT OR IGNORE only helps brand-new rows, and
+// this never touches a value the grower has already calibrated themselves.
+const backfillMoisture = db.prepare('UPDATE raw_materials SET moisture_pct = ? WHERE name = ? AND moisture_pct IS NULL');
+const backfillMoistureAll = db.transaction((rows) => rows.forEach((r) => backfillMoisture.run(r.moisture_pct, r.name)));
+backfillMoistureAll(defaultMaterials);
 
 // Seed the starting roles exactly once, the first time this database has no
 // roles at all — unlike qc_parameters/raw_materials above, this does NOT use

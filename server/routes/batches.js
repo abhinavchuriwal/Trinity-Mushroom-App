@@ -18,11 +18,12 @@ function resolveMaterial(rawMaterialId, typedName) {
         name: typedName || m.name,
         carbonStandard: m.carbon_pct,
         nitrogenStandard: m.nitrogen_pct,
+        moistureStandard: m.moisture_pct,
         defaultCost: m.default_cost_per_kg_npr,
       };
     }
   }
-  return { name: typedName || null, carbonStandard: null, nitrogenStandard: null, defaultCost: null };
+  return { name: typedName || null, carbonStandard: null, nitrogenStandard: null, moistureStandard: null, defaultCost: null };
 }
 
 function loadBatch(id, farmId) {
@@ -127,6 +128,7 @@ router.post('/batches', requirePermission('edit_prewetting'), (req, res) => {
   const costs = asArray(b.cost_per_kg_npr);
   const carbonActuals = asArray(b.carbon_pct_actual);
   const nitrogenActuals = asArray(b.nitrogen_pct_actual);
+  const moistureActuals = asArray(b.moisture_pct_actual);
   const itemNotes = asArray(b.item_notes);
 
   const items = [];
@@ -144,6 +146,8 @@ router.post('/batches', requirePermission('edit_prewetting'), (req, res) => {
       nitrogen_pct_standard: resolved.nitrogenStandard,
       carbon_pct_actual: num(carbonActuals[i]),
       nitrogen_pct_actual: num(nitrogenActuals[i]),
+      moisture_pct_standard: resolved.moistureStandard,
+      moisture_pct_actual: num(moistureActuals[i]),
       notes: str(itemNotes[i]),
     });
   }
@@ -155,8 +159,8 @@ router.post('/batches', requirePermission('edit_prewetting'), (req, res) => {
     const batchId = result.lastInsertRowid;
     const insertItem = db.prepare(`
       INSERT INTO intake_items
-        (batch_id, raw_material_id, material_name, qty_kg, cost_per_kg_npr, carbon_pct_standard, nitrogen_pct_standard, carbon_pct_actual, nitrogen_pct_actual, notes)
-      VALUES (@batch_id, @raw_material_id, @material_name, @qty_kg, @cost_per_kg_npr, @carbon_pct_standard, @nitrogen_pct_standard, @carbon_pct_actual, @nitrogen_pct_actual, @notes)
+        (batch_id, raw_material_id, material_name, qty_kg, cost_per_kg_npr, carbon_pct_standard, nitrogen_pct_standard, carbon_pct_actual, nitrogen_pct_actual, moisture_pct_standard, moisture_pct_actual, notes)
+      VALUES (@batch_id, @raw_material_id, @material_name, @qty_kg, @cost_per_kg_npr, @carbon_pct_standard, @nitrogen_pct_standard, @carbon_pct_actual, @nitrogen_pct_actual, @moisture_pct_standard, @moisture_pct_actual, @notes)
     `);
     items.forEach((it) => insertItem.run({ ...it, batch_id: batchId }));
     return batchId;
@@ -201,7 +205,7 @@ router.get('/batches/:id', (req, res) => {
     let summary = null;
     let days = null;
     if (s.key === 'prewetting') {
-      const recipe = intakeSummary.totalDryKg ? `${intakeSummary.totalDryKg} kg recipe` : null;
+      const recipe = intakeSummary.totalWetKg ? `${intakeSummary.totalWetKg} kg recipe` : null;
       summary = [recipe, batch.prewetting.in_date].filter(Boolean).join(', ') || null;
       days = daysBetween(batch.prewetting.in_date, batch.prewetting.out_date);
     }
@@ -257,15 +261,26 @@ router.get('/batches/:id/export.csv', requirePermission('export_data'), (req, re
   pushRow(batch.intake);
   lines.push('');
   lines.push('-- Raw Material Recipe --');
-  lines.push('material_name,qty_kg_dry,cost_per_kg_npr,amount_npr,carbon_pct_standard,nitrogen_pct_standard,carbon_pct_actual,nitrogen_pct_actual,notes');
+  lines.push(
+    'material_name,qty_kg_wet,cost_per_kg_npr,amount_npr,carbon_pct_standard,nitrogen_pct_standard,carbon_pct_actual,nitrogen_pct_actual,moisture_pct_standard,moisture_pct_actual,qty_kg_dry_est,notes'
+  );
   batch.intake_items.forEach((it) => {
     const amount = it.cost_per_kg_npr !== null ? (it.qty_kg * it.cost_per_kg_npr).toFixed(2) : '';
-    lines.push([it.material_name, it.qty_kg, it.cost_per_kg_npr, amount, it.carbon_pct_standard, it.nitrogen_pct_standard, it.carbon_pct_actual, it.nitrogen_pct_actual, it.notes].map(csvVal).join(','));
+    const moisture = it.moisture_pct_actual ?? it.moisture_pct_standard;
+    const dryKg = moisture !== null && moisture !== undefined ? (it.qty_kg * (1 - moisture / 100)).toFixed(1) : '';
+    lines.push(
+      [
+        it.material_name, it.qty_kg, it.cost_per_kg_npr, amount,
+        it.carbon_pct_standard, it.nitrogen_pct_standard, it.carbon_pct_actual, it.nitrogen_pct_actual,
+        it.moisture_pct_standard, it.moisture_pct_actual, dryKg, it.notes,
+      ].map(csvVal).join(',')
+    );
   });
   lines.push('');
-  lines.push(`Total Dry Weight (kg),${summary.totalDryKg ?? ''}`);
+  lines.push(`Total Wet Weight (kg),${summary.totalWetKg ?? ''}`);
+  lines.push(`Total Dry Weight, est. (kg),${summary.totalDryKg ?? ''}`);
   lines.push(`Total Raw Material Cost (NPR),${summary.totalCostNpr !== null ? summary.totalCostNpr.toFixed(2) : ''}`);
-  lines.push(`Cost per kg Compost Mix (NPR),${summary.costPerKgCompost !== null ? summary.costPerKgCompost.toFixed(2) : ''}`);
+  lines.push(`Cost per kg Compost Mix, wet basis (NPR),${summary.costPerKgCompost !== null ? summary.costPerKgCompost.toFixed(2) : ''}`);
   lines.push(`Batch C:N Ratio,${summary.cnRatio !== null ? summary.cnRatio.toFixed(1) + ':1' : ''}`);
   lines.push('');
   lines.push('-- Pre-Wetting --');

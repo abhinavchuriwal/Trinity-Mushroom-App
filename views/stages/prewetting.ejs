@@ -7,14 +7,16 @@
   <p class="muted">Entered when this batch was created. Not editable here beyond removing a mistaken line &mdash; to add more materials, do it from the New Batch flow next time.</p>
 
   <% if (intakeItems.length) { %>
+    <div class="table-scroll">
     <table>
       <thead>
-        <tr><th>Material</th><th>Dry Kg</th><th>Cost/kg</th><th>Amount</th><th>Carbon % (used)</th><th>Nitrogen % (used)</th><th>Notes</th><th></th></tr>
+        <tr><th>Material</th><th>Wet Kg</th><th>Cost/kg</th><th>Amount</th><th>Carbon % (used)</th><th>Nitrogen % (used)</th><th>Moisture % (used)</th><th>Notes</th><th></th></tr>
       </thead>
       <tbody>
         <% intakeItems.forEach(function(it) {
              var carbonUsed = it.carbon_pct_actual !== null ? it.carbon_pct_actual : it.carbon_pct_standard;
              var nitrogenUsed = it.nitrogen_pct_actual !== null ? it.nitrogen_pct_actual : it.nitrogen_pct_standard;
+             var moistureUsed = it.moisture_pct_actual !== null ? it.moisture_pct_actual : it.moisture_pct_standard;
         %>
           <tr>
             <td><%= it.material_name %></td>
@@ -23,6 +25,7 @@
             <td><%= it.cost_per_kg_npr !== null ? npr(it.qty_kg * it.cost_per_kg_npr) : '—' %></td>
             <td><%= v(carbonUsed) %> <% if (it.carbon_pct_actual !== null) { %><span class="muted">(actual)</span><% } else if (carbonUsed !== null) { %><span class="muted">(std)</span><% } %></td>
             <td><%= v(nitrogenUsed) %> <% if (it.nitrogen_pct_actual !== null) { %><span class="muted">(actual)</span><% } else if (nitrogenUsed !== null) { %><span class="muted">(std)</span><% } %></td>
+            <td><%= v(moistureUsed) %> <% if (it.moisture_pct_actual !== null) { %><span class="muted">(actual)</span><% } else if (moistureUsed !== null) { %><span class="muted">(std)</span><% } else { %><span class="muted">(none — treated as 0%)</span><% } %></td>
             <td><%= v(it.notes) %></td>
             <td>
               <form method="post" action="/batches/<%= batch.id %>/intake/items/<%= it.id %>/delete" data-confirm="Remove this item?">
@@ -33,12 +36,14 @@
         <% }) %>
       </tbody>
     </table>
+    </div>
   <% } else { %>
     <div class="empty-state">No raw materials were recorded for this batch.</div>
   <% } %>
 
   <div class="qc-legend" style="margin-top:1rem">
-    Total dry weight: <strong><%= intakeSummary.totalDryKg !== null ? intakeSummary.totalDryKg + ' kg' : '—' %></strong>
+    Total wet weight: <strong><%= intakeSummary.totalWetKg !== null ? intakeSummary.totalWetKg + ' kg' : '—' %></strong>
+    &nbsp;·&nbsp; Total dry weight (est.): <strong><%= intakeSummary.totalDryKg !== null ? intakeSummary.totalDryKg.toFixed(1) + ' kg' : '—' %></strong>
     &nbsp;·&nbsp; Total recipe cost: <strong><%= npr(intakeSummary.totalCostNpr) %></strong>
     &nbsp;·&nbsp; Cost per kg compost mix: <strong><%= intakeSummary.costPerKgCompost !== null ? npr(intakeSummary.costPerKgCompost) + '/kg' : '—' %></strong>
     &nbsp;·&nbsp; Batch C:N ratio: <strong><%- qcCell('intake', 'cn_ratio', intakeSummary.cnRatio !== null ? intakeSummary.cnRatio.toFixed(1) : null) %></strong>
