@@ -442,6 +442,20 @@ const seedUnitFarm = db.prepare(
 seedUnitFarm.run('Compost Unit', 'TAPL-C', 'compost');
 seedUnitFarm.run('Growing Unit', 'TAPL-G', 'growing');
 
+// Farm access is granted per user, so a workspace introduced by an upgrade
+// reaches nobody by default — existing accounts were granted the farms that
+// existed when they were created. Give any user who can manage users and roles
+// access to every farm, so a new workspace is never invisible to the people
+// responsible for handing out access to it.
+db.prepare(
+  `INSERT OR IGNORE INTO user_farms (user_id, farm_id)
+   SELECT users.id, farms.id FROM users
+   JOIN role_permissions ON role_permissions.role_id = users.role_id
+    AND role_permissions.permission_key = 'manage_users_roles'
+   CROSS JOIN farms
+   WHERE users.active = 1`
+).run();
+
 const batchCols = db.prepare('PRAGMA table_info(batches)').all().map((c) => c.name);
 if (!batchCols.includes('farm_id')) {
   db.exec('ALTER TABLE batches ADD COLUMN farm_id INTEGER REFERENCES farms(id)');
