@@ -3,7 +3,7 @@
 
 <div class="toolbar">
   <h1>Batches <span class="muted" style="font-size:0.95rem; font-weight:400">· <%= currentFarm.name %></span></h1>
-  <% if (can('edit_prewetting')) { %><a class="btn" href="/batches/new">+ New Batch</a><% } %>
+  <% if (can(stagesFor(currentFarm.unit_type || 'full')[0].permission)) { %><a class="btn" href="/batches/new">+ New Batch</a><% } %>
 </div>
 
 <%

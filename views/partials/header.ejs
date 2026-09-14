@@ -30,7 +30,8 @@
         <a href="/today">Today</a>
         <a href="/">Dashboard</a>
         <% if (can('edit_harvest')) { %><a href="/harvest-log">Log Harvest</a><% } %>
-        <% if (can('edit_prewetting')) { %><a href="/batches/new">New Batch</a><% } %>
+        <%# A growing unit's batches start at Receipt, so its New Batch belongs to the growing team, not compost. %>
+        <% if (can(stagesFor(currentFarm.unit_type || 'full')[0].permission)) { %><a href="/batches/new">New Batch</a><% } %>
         <% if (can('manage_raw_materials')) { %><a href="/raw-materials">Raw Materials</a><% } %>
         <a href="/reports">Reports</a>
         <a href="/settings">Settings</a>

@@ -26,7 +26,7 @@
 
   var compostTasks = tasks.filter(function (t) { return t.stage.dept === 'compost'; });
   var growingTasks = tasks.filter(function (t) { return t.stage.dept === 'growing'; });
-  var hasGrowing = growingTasks.length || harvest;
+  var hasGrowing = growingTasks.length || harvest || arriving;
   var showHeadings = compostTasks.length && hasGrowing;
 %>
 
@@ -81,7 +81,7 @@
   <div class="card">
     <div class="empty-state">Your role can look at batches but not enter data, so nothing is waiting for you here. Use <a href="/">Dashboard</a> and <a href="/reports">Reports</a> to see the farm's records.</div>
   </div>
-<% } else if (!tasks.length && !harvest) { %>
+<% } else if (!tasks.length && !harvest && !arriving) { %>
   <div class="card">
     <div class="empty-state">
       Nothing is waiting for you in <strong><%= currentFarm.name %></strong> right now. A batch shows up here as soon as it reaches a stage your department fills in.
@@ -99,6 +99,28 @@
   <% if (hasGrowing) { %>
     <% if (showHeadings) { %><h2 class="today-dept">Growing</h2><% } %>
     <div class="task-grid">
+      <% if (arriving) { %>
+        <section class="task-card">
+          <div class="task-top">
+            <span class="task-stage">Compost on its way</span>
+            <span class="task-where"><%= arriving.deliveries.length %> deliver<%= arriving.deliveries.length === 1 ? 'y' : 'ies' %></span>
+          </div>
+          <% arriving.deliveries.forEach(function (d) { %>
+            <div class="task-facts">
+              <strong class="batch-code"><%= d.spec && d.spec.batch_code ? d.spec.batch_code : 'Compost batch' %></strong>
+              &middot; <%= Number(d.qty_kg).toLocaleString('en-IN') %> kg &middot; sent <%= shortDate(d.dispatch_date) %>
+            </div>
+          <% }) %>
+          <div class="task-actions">
+            <% if (arriving.waitingBatch) { %>
+              <div class="task-facts">When it arrives, record it on the Compost Receipt card below.</div>
+            <% } else if (can(stagesFor(currentFarm.unit_type || 'full')[0].permission)) { %>
+              <a class="btn task-action" href="/batches/new">Start a batch for this compost</a>
+              <div class="task-facts muted">Then record the weight received on its Compost Receipt page.</div>
+            <% } %>
+          </div>
+        </section>
+      <% } %>
       <% if (harvest) { %>
         <section class="task-card">
           <div class="task-top">

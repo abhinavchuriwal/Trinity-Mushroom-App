@@ -2,6 +2,7 @@ const express = require('express');
 const db = require('../db');
 const { ALL_STAGES, stageKeysFor } = require('../lib/stages');
 const { daysBetween, todayLocal } = require('../lib/dates');
+const { unclaimedDispatches } = require('../lib/handover');
 
 const router = express.Router();
 
@@ -110,9 +111,21 @@ router.get('/', (req, res) => {
     }
   }
 
+  // Compost the compost unit has sent that no growing batch has received yet.
+  // A growing batch only exists once someone starts one for that delivery, so
+  // without this the growing team's Today would sit empty while compost waits.
+  let arriving = null;
+  if (res.locals.currentFarm.unit_type === 'growing' && can('edit_receipt')) {
+    const deliveries = unclaimedDispatches();
+    if (deliveries.length) {
+      const waitingBatch = tasks.some((t) => t.stage.key === 'receipt');
+      arriving = { deliveries, waitingBatch };
+    }
+  }
+
   const canEditAnything = Object.values(ALL_STAGES).some((s) => can(s.permission));
 
-  res.render('today', { tasks, harvest, today, canEditAnything });
+  res.render('today', { tasks, harvest, arriving, today, canEditAnything });
 });
 
 module.exports = router;
