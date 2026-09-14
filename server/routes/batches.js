@@ -1,7 +1,7 @@
 const express = require('express');
 const db = require('../db');
 const { nepaliFiscalYear } = require('../lib/nepaliFY');
-const { daysBetween } = require('../lib/dates');
+const { daysBetween, todayLocal } = require('../lib/dates');
 const { STAGE_META, ALL_STAGES, stagesFor, stageKeysFor } = require('../lib/stages');
 const { num, str, asArray } = require('../lib/batchHelpers');
 const { summarizeIntakeItems } = require('../lib/economics');
@@ -84,7 +84,7 @@ router.get('/api/nepali-fy', (req, res) => {
 // a delivery, recorded at the Receipt stage — so the recipe table is only shown
 // where the batch actually starts from raw materials.
 router.get('/batches/new', (req, res) => {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayLocal();
   const unitType = res.locals.currentFarm.unit_type || 'full';
   res.render('batch-new', {
     prefix: res.locals.currentFarm.code_prefix,
@@ -111,7 +111,7 @@ router.post('/batches', (req, res) => {
     return res.status(403).render('403', { permission: firstStage.permission });
   }
 
-  const effectiveDate = b.start_date || new Date().toISOString().slice(0, 10);
+  const effectiveDate = b.start_date || todayLocal();
   const fy = nepaliFiscalYear(effectiveDate);
   const cleanBatchNo = (b.batch_no || '').trim();
 
@@ -119,7 +119,7 @@ router.post('/batches', (req, res) => {
     return res.render('batch-new', {
       prefix: res.locals.currentFarm.code_prefix,
       unitType,
-      today: new Date().toISOString().slice(0, 10),
+      today: todayLocal(),
       fy,
       error,
       batch_no: cleanBatchNo,

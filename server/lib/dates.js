@@ -9,4 +9,14 @@ function daysBetween(startStr, endStr) {
   return Math.round((end - start) / (1000 * 60 * 60 * 24));
 }
 
-module.exports = { daysBetween };
+// Today's date (YYYY-MM-DD) on the farm's clock, not the server's. The cloud
+// host runs on UTC, which is 5h45m behind Nepal — without this, a turn reading
+// logged at 5am Nepal time would be stamped with yesterday's date.
+const FARM_TZ = process.env.TRINITY_TZ || 'Asia/Kathmandu';
+
+function todayLocal() {
+  // en-CA formats as YYYY-MM-DD.
+  return new Intl.DateTimeFormat('en-CA', { timeZone: FARM_TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+}
+
+module.exports = { daysBetween, todayLocal, FARM_TZ };

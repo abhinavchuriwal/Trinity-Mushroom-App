@@ -1,0 +1,127 @@
+<% var title = 'Today' %>
+<%- include('partials/header') %>
+
+<%
+  function fmt(d, opts) {
+    if (!d) return '—';
+    return new Intl.DateTimeFormat('en-GB', Object.assign({ timeZone: 'UTC' }, opts)).format(new Date(d + 'T00:00:00Z'));
+  }
+  var dateLabel = fmt(today, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  function shortDate(d) {
+    if (d === today) return 'today';
+    return fmt(d, { day: 'numeric', month: 'short' });
+  }
+
+  // What each stage page is for, in the words a supervisor would use.
+  var stageHint = {
+    prewetting: 'Pre-wetting dates, water and turning',
+    spawning: 'Spawn strain, rate, bags and spawning date',
+    dispatch: 'Record compost leaving the site',
+    receipt: 'Record compost arriving from the compost unit',
+    casing: 'Casing soil preparation and date',
+    room_in: 'Rooms filled and Room In dates',
+    harvest: 'Picks go in Log Harvest. Mark harvest finished here.',
+    room_out: 'Room Out dates and closing the batch'
+  };
+
+  var compostTasks = tasks.filter(function (t) { return t.stage.dept === 'compost'; });
+  var growingTasks = tasks.filter(function (t) { return t.stage.dept === 'growing'; });
+  var hasGrowing = growingTasks.length || harvest;
+  var showHeadings = compostTasks.length && hasGrowing;
+%>
+
+<div class="today-head">
+  <h1>Today</h1>
+  <div class="muted"><%= dateLabel %> &middot; <%= currentFarm.name %></div>
+</div>
+
+<%
+  function taskCard(t) {
+%>
+  <section class="task-card">
+    <div class="task-top">
+      <span class="task-stage"><%= t.stage.label %></span>
+      <% if (t.location || t.day) { %>
+        <span class="task-where"><%= t.location || '' %><%= t.location && t.day ? ' · ' : '' %><%= t.day ? 'Day ' + t.day : '' %></span>
+      <% } %>
+    </div>
+    <div class="task-title batch-code"><%= t.batch.batch_code %></div>
+
+    <% if (t.kind === 'phase1' || t.kind === 'phase2') { %>
+      <div class="task-facts">
+        <% if (!t.last) { %>
+          No readings yet
+        <% } else if (t.kind === 'phase1') { %>
+          Last: <%= t.last.turn_number ? 'Turn ' + t.last.turn_number + ', ' : '' %><%= shortDate(t.last.reading_date) %>
+          &middot; <%- qcCell('phase1', 'pile_temp_c', t.last.pile_temp_c) %>
+        <% } else { %>
+          Last: <%= shortDate(t.last.reading_date) %>
+          &middot; <%- qcCell('phase2', 'temp_c', t.last.temp_c) %>
+          <% if (t.last.ammonia_ppm !== null) { %>&middot; <%- qcCell('phase2', 'ammonia_ppm', t.last.ammonia_ppm) %><% } %>
+        <% } %>
+      </div>
+      <% if (t.loggedToday) { %><div class="task-done">&#10003; Reading logged today</div><% } %>
+      <div class="task-actions">
+        <a class="btn task-action" href="<%= t.entryHref %>"><%= t.kind === 'phase1' ? 'Log turn reading' : 'Log tunnel reading' %></a>
+        <a class="task-secondary" href="<%= t.href %>"><%= t.kind === 'phase1' ? 'Dates, bunker & lab results' : 'Dates, pasteurization & lab results' %></a>
+      </div>
+    <% } else { %>
+      <div class="task-facts"><%= stageHint[t.stage.key] || '' %></div>
+      <div class="task-actions">
+        <%# Day-to-day picks go through the Harvest card above; this is only for closing out the batch. %>
+        <a class="btn task-action<%= t.stage.key === 'harvest' ? ' secondary' : '' %>" href="<%= t.href %>">Open <%= t.stage.label %></a>
+      </div>
+    <% } %>
+  </section>
+<%
+  }
+%>
+
+<% if (!canEditAnything) { %>
+  <div class="card">
+    <div class="empty-state">Your role can look at batches but not enter data, so nothing is waiting for you here. Use <a href="/">Dashboard</a> and <a href="/reports">Reports</a> to see the farm's records.</div>
+  </div>
+<% } else if (!tasks.length && !harvest) { %>
+  <div class="card">
+    <div class="empty-state">
+      Nothing is waiting for you in <strong><%= currentFarm.name %></strong> right now. A batch shows up here as soon as it reaches a stage your department fills in.
+      <% if (allowedFarms.length > 1) { %><br><br>Working in a different unit? Open <strong>Menu</strong> and switch the workspace.<% } %>
+    </div>
+  </div>
+<% } else { %>
+  <% if (compostTasks.length) { %>
+    <% if (showHeadings) { %><h2 class="today-dept">Compost</h2><% } %>
+    <div class="task-grid">
+      <% compostTasks.forEach(taskCard) %>
+    </div>
+  <% } %>
+
+  <% if (hasGrowing) { %>
+    <% if (showHeadings) { %><h2 class="today-dept">Growing</h2><% } %>
+    <div class="task-grid">
+      <% if (harvest) { %>
+        <section class="task-card">
+          <div class="task-top">
+            <span class="task-stage">Harvest</span>
+            <span class="task-where"><%= harvest.rooms.length %> room<%= harvest.rooms.length === 1 ? '' : 's' %> in crop</span>
+          </div>
+          <div class="task-title"><%= harvest.rooms.join(', ') %></div>
+          <div class="task-facts">
+            <% if (harvest.picked.entries) { %>
+              Picked today: <strong><%= (harvest.picked.a + harvest.picked.b).toFixed(1) %> kg</strong>
+              <span class="muted">(A <%= harvest.picked.a.toFixed(1) %> &middot; B <%= harvest.picked.b.toFixed(1) %>)</span>
+            <% } else { %>
+              Nothing picked yet today
+            <% } %>
+          </div>
+          <div class="task-actions">
+            <a class="btn task-action" href="/harvest-log">Log a harvest pick</a>
+          </div>
+        </section>
+      <% } %>
+      <% growingTasks.forEach(taskCard) %>
+    </div>
+  <% } %>
+<% } %>
+
+<%- include('partials/footer') %>

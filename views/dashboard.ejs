@@ -45,8 +45,8 @@
       <thead>
         <tr>
           <th>Batch Code</th>
-          <th>Start Date</th>
-          <th>FY</th>
+          <th class="hide-sm">Start Date</th>
+          <th class="hide-sm">FY</th>
           <th>Current Stage</th>
           <th>Status</th>
           <th>QC Flags</th>
@@ -56,8 +56,8 @@
         <% batches.forEach(function(b) { %>
           <tr onclick="window.location='/batches/<%= b.id %>'">
             <td class="batch-code"><%= b.batch_code %></td>
-            <td><%= b.start_date %></td>
-            <td class="muted"><%= b.fy || '—' %></td>
+            <td class="hide-sm"><%= b.start_date %></td>
+            <td class="muted hide-sm"><%= b.fy || '—' %></td>
             <td><span class="stage-pill"><%= (STAGE_META.find(function(s){ return s.key === b.current_stage; }) || {}).label || b.current_stage %></span></td>
             <td><span class="status-pill status-<%= b.status %>"><%= b.status === 'completed' ? 'Completed' : 'In Progress' %></span></td>
             <td>

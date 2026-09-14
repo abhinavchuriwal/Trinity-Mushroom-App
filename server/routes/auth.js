@@ -62,7 +62,7 @@ router.post('/login', (req, res) => {
   req.session.regenerate((err) => {
     if (err) return res.render('login', { error: 'Could not log in, try again.', next });
     req.session.userId = user.id;
-    res.redirect(next.startsWith('/') ? next : '/');
+    res.redirect(next.startsWith('/') && !next.startsWith('//') && !next.startsWith('/\\') ? next : '/');
   });
 });
 

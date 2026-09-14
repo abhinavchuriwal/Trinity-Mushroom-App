@@ -10,17 +10,25 @@
     <span class="stage-pill">Current stage: <%= currentStageMeta ? currentStageMeta.label : batch.current_stage %></span>
     <span class="status-pill status-<%= batch.status %>"><%= batch.status === 'completed' ? 'Completed' : 'In Progress' %></span>
   </div>
-  <div>
-    <% if (can('export_data')) { %>
-      <a class="btn secondary" href="/batches/<%= batch.id %>/export.csv">Export CSV</a>
+  <% if (can('export_data') || can('delete_batch')) { %>
+    <% function batchActions() { %>
+      <% if (can('export_data')) { %>
+        <a class="btn secondary" href="/batches/<%= batch.id %>/export.csv">Export CSV</a>
+      <% } %>
+      <% if (can('delete_batch')) { %>
+        <form method="post" action="/batches/<%= batch.id %>/delete" style="display:inline"
+          data-confirm="Delete this batch and all its data? This cannot be undone.">
+          <button class="btn danger" type="submit">Delete Batch</button>
+        </form>
+      <% } %>
     <% } %>
-    <% if (can('delete_batch')) { %>
-      <form method="post" action="/batches/<%= batch.id %>/delete" style="display:inline"
-        data-confirm="Delete this batch and all its data? This cannot be undone.">
-        <button class="btn danger" type="submit">Delete Batch</button>
-      </form>
-    <% } %>
-  </div>
+    <div class="desktop-only"><% batchActions() %></div>
+    <%# On a phone these fold under "More" so a thumb scrolling the page can't land on Delete. %>
+    <details class="batch-actions mobile-only">
+      <summary class="btn secondary">More</summary>
+      <div class="batch-actions-body"><% batchActions() %></div>
+    </details>
+  <% } %>
 </div>
 
 <div class="stage-nav">

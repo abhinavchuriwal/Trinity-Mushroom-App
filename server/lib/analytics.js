@@ -1,6 +1,6 @@
 const db = require('../db');
 const qc = require('./qc');
-const { daysBetween } = require('./dates');
+const { daysBetween, todayLocal } = require('./dates');
 const { summarizeIntakeItems } = require('./economics');
 
 // A growing-unit batch doesn't make its own compost — it receives deliveries
@@ -158,7 +158,7 @@ function getBatchMetrics(batchId) {
   const aGradeEfficiency = totalCost ? (totalGradeA / totalCost) * 1000 : null;
 
   const lastRoomOut = rooms.map((r) => r.room_out_date).filter(Boolean).sort().pop() || null;
-  const totalDays = daysBetween(batch.start_date, lastRoomOut || new Date().toISOString().slice(0, 10));
+  const totalDays = daysBetween(batch.start_date, lastRoomOut || todayLocal());
 
   return {
     batch,

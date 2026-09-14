@@ -11,11 +11,11 @@
       <input type="hidden" name="next" value="<%= next %>" />
       <div class="field" style="margin-bottom:0.75rem">
         <label>Username</label>
-        <input type="text" name="username" autofocus required />
+        <input type="text" name="username" autofocus required autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" />
       </div>
       <div class="field" style="margin-bottom:0.75rem">
         <label>Password</label>
-        <input type="password" name="password" required />
+        <input type="password" name="password" required autocomplete="current-password" />
       </div>
       <div class="form-actions"><button class="btn" type="submit">Log In</button></div>
     </form>

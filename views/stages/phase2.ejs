@@ -2,7 +2,10 @@
 <%- include('../partials/header') %>
 <%- include('../partials/batch-banner') %>
 
-<section class="card">
+<% var lastAdded = readings.reduce(function (a, r) { return !a || r.id > a.id ? r : a; }, null); %>
+<%# On a phone the reading log moves above the summary (CSS order); desktop layout is unchanged. %>
+<section class="card stage-card">
+  <div class="stage-summary">
   <h2>Phase II &mdash; Pasteurization &amp; Conditioning (Tunnel)</h2>
   <form class="grid" method="post" action="/batches/<%= batch.id %>/phase2">
     <div class="field"><label>Tunnel ID</label><select name="tunnel_id"><%- optionsFor(tunnels, row.tunnel_id) %></select></div>
@@ -96,10 +99,15 @@
       <label class="muted"><input type="checkbox" name="advance" value="1" style="width:auto" /> Mark Phase II complete &amp; move to Spawning</label>
     </div>
   </form>
+  </div>
 
-  <h3 style="margin-top:1.5rem">Conditioning Temperature / Ammonia Log</h3>
+  <div class="stage-log">
+  <div class="log-head">
+  <h3 class="log-title">Conditioning Temperature / Ammonia Log</h3>
   <div class="qc-legend">Target conditioning temp: <%= qcParam('phase2','temp_c')?.min_value %>&ndash;<%= qcParam('phase2','temp_c')?.max_value %>°C · ammonia below <%= qcParam('phase2','ammonia_ppm')?.max_value %>ppm before spawning</div>
+  </div>
 
+  <div class="log-history">
   <% if (readings.length) { %>
     <div class="chart-wrap"><%- chart %></div>
     <table>
@@ -124,15 +132,22 @@
   <% } else { %>
     <div class="empty-state">No readings logged yet.</div>
   <% } %>
+  </div>
 
-  <form class="grid" method="post" action="/batches/<%= batch.id %>/phase2/readings" style="margin-top:1rem">
-    <div class="field"><label>Date</label><input type="date" name="reading_date" /></div>
-    <div class="field"><label>Temp (°C)</label><input type="number" step="any" name="temp_c" /></div>
-    <div class="field"><label>Ammonia (ppm)</label><input type="number" step="any" name="ammonia_ppm" /></div>
-    <div class="field"><label>Entered By</label><input type="text" name="entered_by" /></div>
+  <form id="add-reading" class="grid log-form" method="post" action="/batches/<%= batch.id %>/phase2/readings">
+    <% if (saved && lastAdded) { %>
+      <div class="field wide saved-notice">
+        &#10003; Saved: <%= lastAdded.reading_date %><%= lastAdded.temp_c !== null ? ' · ' + lastAdded.temp_c + '°C' : '' %><%= lastAdded.ammonia_ppm !== null ? ' · ' + lastAdded.ammonia_ppm + ' ppm ammonia' : '' %>
+      </div>
+    <% } %>
+    <div class="field"><label>Date</label><input type="date" name="reading_date" value="<%= today %>" /></div>
+    <div class="field"><label>Temp (°C)</label><input type="number" step="any" name="temp_c" inputmode="decimal" /></div>
+    <div class="field"><label>Ammonia (ppm)</label><input type="number" step="any" name="ammonia_ppm" inputmode="decimal" /></div>
+    <div class="field"><label>Entered By</label><input type="text" name="entered_by" value="<%= currentUser.full_name || currentUser.username %>" /></div>
     <div class="field wide"><label>Notes</label><input type="text" name="notes" /></div>
     <div class="form-actions"><button class="btn" type="submit">Add Reading</button></div>
   </form>
+  </div>
 </section>
 
 <%- include('../partials/footer') %>

@@ -7,6 +7,7 @@ const qc = require('./lib/qc');
 const { STAGE_META, stagesFor } = require('./lib/stages');
 const { requireAuth } = require('./lib/auth');
 const SqliteSessionStore = require('./lib/sqliteSessionStore');
+const { todayLocal } = require('./lib/dates');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -51,6 +52,9 @@ app.use(
 
 app.use((req, res, next) => {
   res.locals.companyName = 'Trinity Agro Private Limited';
+  res.locals.currentPath = req.path;
+  // Farm-local date; routes that pass their own `today` override this.
+  res.locals.today = todayLocal();
   res.locals.qcCell = (stage, key, value) => {
     const { status, param } = qc.evaluate(stage, key, value);
     const unit = param && param.unit ? param.unit : '';
@@ -98,6 +102,7 @@ app.use('/', require('./routes/auth'));
 
 app.use(requireAuth);
 
+app.use('/today', require('./routes/today'));
 app.use('/', require('./routes/batches'));
 app.use('/', require('./routes/stages'));
 app.use('/', require('./routes/rooms'));

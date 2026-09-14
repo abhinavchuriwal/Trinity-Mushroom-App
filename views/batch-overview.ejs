@@ -5,7 +5,7 @@
 <div class="card">
   <h2>Process Stages</h2>
   <table>
-    <thead><tr><th>#</th><th>Stage</th><th>Status</th><th>Started / Key Info</th><th>Days</th><th>QC Flags</th><th></th></tr></thead>
+    <thead><tr><th class="hide-sm">#</th><th>Stage</th><th>Status</th><th>Started / Key Info</th><th>Days</th><th>QC Flags</th><th class="hide-sm"></th></tr></thead>
     <tbody>
       <% stageStatus.forEach(function(s, i) {
            var stageOrder = stageStatus.map(function(x){return x.key;});
@@ -14,7 +14,7 @@
            var isCurrent = s.key === batch.current_stage && batch.status !== 'completed';
       %>
         <tr>
-          <td><%= i + 1 %></td>
+          <td class="hide-sm"><%= i + 1 %></td>
           <td><a href="<%= s.path(batch.id) %>"><%= s.label %></a></td>
           <td>
             <% if (isDone) { %><span class="status-pill status-completed">Done</span>
@@ -28,7 +28,7 @@
               <span class="qc-cell qc-high"><%= s.flagCount %> flag<%= s.flagCount === 1 ? '' : 's' %></span>
             <% } else { %><span class="muted">—</span><% } %>
           </td>
-          <td><a class="btn small secondary" href="<%= s.path(batch.id) %>">Open</a></td>
+          <td class="hide-sm"><a class="btn small secondary" href="<%= s.path(batch.id) %>">Open</a></td>
         </tr>
       <% }) %>
     </tbody>

@@ -234,6 +234,43 @@ To restore: stop the server, replace `trinity-agro.db` with a backup (deleting a
 - **CSV export** — per-batch export button for record-keeping, including the full
   raw material recipe, every stage's data, rooms, harvests, and computed totals.
 
+## On a phone (supervisors)
+
+The same app works on Android phones — there's no separate app to build or
+publish. Supervisors open the live URL in Chrome and install it:
+
+1. Open the app's URL in **Chrome** on the phone and log in.
+2. Tap **⋮** (top right) → **Add to Home screen** / **Install app**.
+3. A Trinity Agro icon appears on the home screen. It opens full-screen,
+   straight to **Today**, and stays logged in for 30 days.
+
+What changes on a small screen (a desktop browser looks the same as before):
+
+- **Today** (`/today`, also in the top menu) — the supervisor's home screen.
+  Lists only the batches in the current workspace that are at a stage *their
+  role* can enter, each with one button to the entry form: Phase I → log a
+  turn reading, Phase II → log a tunnel reading, one Harvest card for every
+  occupied room (with kg picked today), and every other stage → open its page.
+- **Phase I / Phase II** — on a phone the reading form comes first, then the
+  reading history, then the stage summary. The form is pre-filled with
+  today's date, the next turn number, the batch's bunker and the person's own
+  name, and shows a "Saved" confirmation after each reading.
+- **Log Harvest** — confirms each pick after saving and remembers the flush
+  chosen, since several rooms are usually logged in the same flush.
+- Navigation folds under a **Menu** button, stage tabs become one sideways
+  strip, wide tables scroll sideways inside their card, and Export/Delete on a
+  batch sit under **More** so they can't be tapped by accident.
+
+The app is installable because of `public/manifest.json` and a service worker
+(`public/sw.js`). The service worker deliberately caches **no** pages or
+data, so nobody ever sees stale readings — it only keeps a small "No internet
+connection" page to show when signal drops. Signal is needed to use the app.
+
+**Dates follow the farm's clock.** "Today" (default reading/harvest dates, the
+Today screen) is calculated in Nepal time (`Asia/Kathmandu`), not the cloud
+server's UTC — otherwise anything logged before 5:45am would get yesterday's
+date. Set `TRINITY_TZ` to override.
+
 ## AI performance analysis (optional)
 
 The Room Out and Reports pages can generate a natural-language performance

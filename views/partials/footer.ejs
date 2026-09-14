@@ -29,6 +29,43 @@
       });
     })();
 
+    // Phone menu toggle.
+    (function () {
+      var btn = document.querySelector('.menu-toggle');
+      var header = document.querySelector('header.site');
+      if (!btn || !header) return;
+      btn.addEventListener('click', function () {
+        var open = header.classList.toggle('menu-open');
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        btn.textContent = open ? 'Close' : 'Menu';
+      });
+    })();
+
+    // On a phone the stage tabs are one sideways-scrolling row; bring the
+    // current stage into view instead of leaving it off-screen to the right.
+    (function () {
+      var nav = document.querySelector('.stage-nav');
+      var active = nav && nav.querySelector('a.active');
+      if (!active || nav.scrollWidth <= nav.clientWidth) return;
+      nav.scrollLeft = active.offsetLeft - nav.offsetLeft - (nav.clientWidth - active.offsetWidth) / 2;
+    })();
+
+    // Wide tables scroll sideways inside their own strip on a narrow screen,
+    // rather than stretching the whole page. No effect when the table fits.
+    (function () {
+      document.querySelectorAll('main table').forEach(function (t) {
+        if (t.closest('.table-scroll, .chart-wrap, .table-fit')) return;
+        var wrap = document.createElement('div');
+        wrap.className = 'table-fit';
+        t.parentNode.insertBefore(wrap, t);
+        wrap.appendChild(t);
+      });
+    })();
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(function () {});
+    }
+
     (function () {
       var backdrop = document.getElementById('confirm-modal');
       var text = document.getElementById('confirm-modal-text');

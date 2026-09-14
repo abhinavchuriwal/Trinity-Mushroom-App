@@ -345,3 +345,204 @@ footer.site {
   font-weight: 700;
   color: var(--green-900);
 }
+
+/* ---------- Header menu (phone) ----------
+   On a desktop the wrapper is invisible to layout (display: contents), so the
+   nav and user bar sit in the header exactly as before. */
+.site-menu { display: contents; }
+.menu-toggle { display: none; }
+.mobile-only { display: none; }
+
+.saved-notice {
+  background: var(--green-100);
+  border: 1px solid var(--green-600);
+  color: var(--green-900);
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.log-title { margin-top: 1.5rem; }
+.log-form { margin-top: 1rem; }
+
+/* ---------- Today ---------- */
+.today-head { margin-bottom: 1.1rem; }
+.today-head h1 { margin-bottom: 0.15rem; }
+.today-dept {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--gray-700);
+  margin: 1.4rem 0 0.6rem;
+}
+.task-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 0.9rem;
+  align-items: start;
+}
+.task-card {
+  background: var(--white);
+  border: 1px solid var(--gray-300);
+  border-radius: 10px;
+  padding: 1rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+.task-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.task-stage {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--green-700);
+}
+.task-where {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--gray-700);
+  font-variant-numeric: tabular-nums;
+}
+.task-title { font-size: 1.1rem; font-weight: 700; color: var(--green-900); overflow-wrap: anywhere; }
+.task-facts { font-size: 0.9rem; color: var(--gray-700); font-variant-numeric: tabular-nums; }
+.task-done { font-size: 0.85rem; font-weight: 700; color: var(--green-700); }
+.task-actions { display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.3rem; }
+.task-action { text-align: center; font-weight: 600; }
+.task-secondary { font-size: 0.85rem; text-align: center; padding: 0.35rem; }
+
+/* ---------- Phone layout ---------- */
+@media (max-width: 720px) {
+  .desktop-only { display: none; }
+  .mobile-only { display: revert; }
+
+  header.site {
+    padding: 0.5rem 0.9rem;
+    flex-wrap: wrap;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+  header.site .brand-logo { height: 34px; }
+  header.site .brand-text small { display: none; }
+  header.site .training-badge.mobile-only { display: inline-block; margin-left: auto; }
+
+  .menu-toggle {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 1rem;
+    margin-left: auto;
+    border: 1px solid var(--gray-300);
+    border-radius: 6px;
+    background: var(--white);
+    color: var(--green-900);
+    font-size: 0.95rem;
+    font-weight: 700;
+    font-family: inherit;
+  }
+  .training-badge.mobile-only + .menu-toggle { margin-left: 0.5rem; }
+
+  .site-menu { display: none; width: 100%; }
+  header.site.menu-open .site-menu { display: block; }
+  header.site.menu-open { max-height: 100vh; overflow-y: auto; }
+
+  header.site nav {
+    display: flex;
+    flex-direction: column;
+    border-top: 1px solid var(--gray-300);
+    margin-top: 0.5rem;
+  }
+  header.site nav a {
+    margin-left: 0;
+    padding: 0.8rem 0.25rem;
+    font-size: 1rem;
+    border-bottom: 1px solid var(--gray-100);
+  }
+  .user-bar {
+    flex-wrap: wrap;
+    margin-left: 0;
+    padding: 0.8rem 0.25rem 0.4rem;
+    gap: 0.6rem;
+    font-size: 0.9rem;
+  }
+  .user-bar .user-name { flex: 1 1 100%; }
+  .farm-switch { flex: 1 1 100%; }
+  .farm-switch select { max-width: none; width: 100%; }
+  .user-bar .training-badge { display: none; }
+
+  main { padding: 0.9rem 0.75rem; }
+  .card { padding: 1rem 0.9rem; margin-bottom: 0.9rem; }
+  h1 { font-size: 1.3rem; }
+
+  /* Comfortable thumb targets; 16px text also stops phones zooming into a field. */
+  input, select, textarea { font-size: 16px; min-height: 44px; }
+  input[type="checkbox"], input[type="radio"] { min-height: 0; }
+  .btn { min-height: 44px; padding: 0.6rem 1rem; font-size: 0.95rem; }
+  .btn.small { min-height: 38px; padding: 0.4rem 0.8rem; font-size: 0.85rem; }
+
+  form.grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem 0.6rem; }
+  .field input, .field select, .field textarea { width: 100%; min-width: 0; }
+  .form-actions { flex-direction: column; align-items: stretch; }
+  .form-actions .btn { width: 100%; }
+
+  .table-fit { overflow-x: auto; }
+  .table-fit table, .table-scroll table { font-size: 0.85rem; }
+  /* Column headers set each column's minimum width, so a many-column log
+     scrolls sideways instead of squeezing into one-word-per-line. Label/value
+     sheets (row headers, no column headers) just wrap to fit the screen. */
+  thead th { white-space: nowrap; }
+  table:has(thead) td { white-space: nowrap; }
+  tbody th { white-space: normal; width: auto !important; }
+  .table-scroll table:not(:has(thead)) { min-width: 0; }
+  .hide-sm { display: none; }
+
+  /* Batch pages: stage tabs become one sideways-scrolling strip. */
+  .toolbar { align-items: flex-start; }
+  h1.batch-code { font-size: 1.1rem; overflow-wrap: anywhere; }
+  .stage-nav {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    margin: 0 -0.75rem 1rem;
+    padding: 0 0.75rem 0.35rem;
+    scrollbar-width: none;
+  }
+  .stage-nav::-webkit-scrollbar { display: none; }
+  .stage-nav a { white-space: nowrap; flex: none; padding: 0.6rem 0.9rem; }
+
+  .batch-actions { position: relative; }
+  .batch-actions summary { list-style: none; cursor: pointer; }
+  .batch-actions summary::-webkit-details-marker { display: none; }
+  .batch-actions-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+  }
+  .batch-actions-body form { display: block !important; }
+  .batch-actions-body .btn { width: 100%; }
+
+  /* Phase I / II: the reading log and its entry form come first on a phone —
+     that's what a supervisor opens the page for. The summary follows. */
+  .stage-card { display: flex; flex-direction: column; }
+  .stage-card .stage-log { order: -1; display: flex; flex-direction: column; }
+  .stage-card .log-head { order: 0; }
+  .stage-card .log-form { order: 1; margin-top: 0.4rem; }
+  .stage-card .log-history { order: 2; margin-top: 1.2rem; }
+  .stage-card .log-title { margin-top: 0; font-size: 1.15rem; color: var(--green-900); }
+  .stage-card .stage-summary { margin-top: 1.4rem; padding-top: 1.2rem; border-top: 1px solid var(--gray-300); }
+  /* Room for the sticky header plus the log heading and targets above the form. */
+  #add-reading { scroll-margin-top: 12.5rem; }
+
+  .task-grid { grid-template-columns: 1fr; }
+  .task-action { min-height: 50px; display: flex; align-items: center; justify-content: center; font-size: 1rem; }
+
+  footer.site { padding: 1.2rem 1rem; }
+}

@@ -3,6 +3,7 @@ const db = require('../db');
 const { getBatchHeader, num, str } = require('../lib/batchHelpers');
 const { advanceStage, nextStagePath } = require('../lib/stages');
 const { requirePermission } = require('../lib/auth');
+const { todayLocal } = require('../lib/dates');
 const {
   buildSpecSnapshot,
   costShareFor,
@@ -33,7 +34,7 @@ router.get('/batches/:id/dispatch', (req, res) => {
     dispatchedKg,
     // Preview of the spec sheet that will travel with the next delivery.
     spec: buildSpecSnapshot(batch.id),
-    today: new Date().toISOString().slice(0, 10),
+    today: todayLocal(),
   });
 });
 
@@ -51,7 +52,7 @@ router.post('/batches/:id/dispatch', requirePermission('edit_dispatch'), (req, r
      VALUES (@compost_batch_id, @dispatch_date, @qty_kg, @destination_type, @buyer_name, @spec_snapshot, @cost_share_npr, @entered_by, @notes)`
   ).run({
     compost_batch_id: batch.id,
-    dispatch_date: str(b.dispatch_date) || new Date().toISOString().slice(0, 10),
+    dispatch_date: str(b.dispatch_date) || todayLocal(),
     qty_kg: qty,
     destination_type: external ? 'external' : 'internal',
     buyer_name: external ? str(b.buyer_name) : null,
@@ -93,7 +94,7 @@ router.get('/batches/:id/receipt', (req, res) => {
     // One delivery per growing batch for now, so nothing is offered once this
     // batch has taken one.
     unclaimed: receipts.length ? [] : unclaimedDispatches(),
-    today: new Date().toISOString().slice(0, 10),
+    today: todayLocal(),
   });
 });
 
@@ -113,7 +114,7 @@ router.post('/batches/:id/receipt', requirePermission('edit_receipt'), (req, res
     )
     .run(
       batch.id,
-      str(b.receipt_date) || new Date().toISOString().slice(0, 10),
+      str(b.receipt_date) || todayLocal(),
       num(b.received_qty_kg),
       num(b.dispatch_id)
     );

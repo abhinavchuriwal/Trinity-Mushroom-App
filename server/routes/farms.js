@@ -6,11 +6,17 @@ const router = express.Router();
 
 // Switch the active farm. Only farms this user has been granted are accepted,
 // so a posted farm_id can't be used to reach a workspace they aren't assigned.
+// Only same-site paths: "//other-site.com" also starts with "/" but browsers
+// treat it as a different website.
+function isLocalPath(p) {
+  return typeof p === 'string' && p.startsWith('/') && !p.startsWith('//') && !p.startsWith('/\\');
+}
+
 router.post('/switch', (req, res) => {
   const allowed = getFarmsForUser(res.locals.currentUser.id);
   const target = allowed.find((f) => String(f.id) === String(req.body.farm_id));
   if (target) req.session.farmId = target.id;
-  res.redirect(req.body.next && req.body.next.startsWith('/') ? req.body.next : '/');
+  res.redirect(isLocalPath(req.body.next) ? req.body.next : '/');
 });
 
 // Wipe every batch in a Training farm. Deliberately restricted to farms flagged

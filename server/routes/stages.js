@@ -2,7 +2,7 @@ const express = require('express');
 const db = require('../db');
 const qc = require('../lib/qc');
 const { lineChart } = require('../lib/chart');
-const { daysBetween } = require('../lib/dates');
+const { daysBetween, todayLocal } = require('../lib/dates');
 const { getBatchHeader, num, str, upsert } = require('../lib/batchHelpers');
 const { advanceStage, nextStagePath, STAGE_META } = require('../lib/stages');
 const { summarizeIntakeItems } = require('../lib/economics');
@@ -67,7 +67,7 @@ router.get('/batches/:id/phase1', (req, res) => {
   );
   const bunkers = db.prepare('SELECT * FROM bunkers WHERE active = 1 ORDER BY code').all();
   const dryMatterLoss = (getBatchMetrics(req.params.id) || {}).dryMatterLoss || null;
-  render(res, 'stages/phase1', req.params.id, { row, readings, chart, bunkers, dryMatterLoss, days: daysBetween(row.start_date, row.end_date) }, req.farmId);
+  render(res, 'stages/phase1', req.params.id, { row, readings, chart, bunkers, dryMatterLoss, saved: req.query.saved === 'reading', days: daysBetween(row.start_date, row.end_date) }, req.farmId);
 });
 
 router.post('/batches/:id/phase1', requirePermission('edit_phase1'), (req, res) => {
@@ -97,7 +97,7 @@ router.post('/batches/:id/phase1/readings', requirePermission('edit_phase1'), (r
   ).run({
     batch_id: id,
     turn_number: num(b.turn_number),
-    reading_date: str(b.reading_date) || new Date().toISOString().slice(0, 10),
+    reading_date: str(b.reading_date) || todayLocal(),
     bunker_no: str(b.bunker_no),
     pile_temp_c: num(b.pile_temp_c),
     ambient_temp_c: num(b.ambient_temp_c),
@@ -107,7 +107,7 @@ router.post('/batches/:id/phase1/readings', requirePermission('edit_phase1'), (r
     entered_by: str(b.entered_by),
     notes: str(b.notes),
   });
-  res.redirect(`/batches/${id}/phase1`);
+  res.redirect(`/batches/${id}/phase1?saved=reading#add-reading`);
 });
 
 router.post('/batches/:id/phase1/readings/:readingId/delete', requirePermission('edit_phase1'), (req, res) => {
@@ -126,7 +126,7 @@ router.get('/batches/:id/phase2', (req, res) => {
   );
   const tunnels = db.prepare('SELECT * FROM tunnels WHERE active = 1 ORDER BY code').all();
   const dryMatterLoss = (getBatchMetrics(req.params.id) || {}).dryMatterLoss || null;
-  render(res, 'stages/phase2', req.params.id, { row, readings, chart, tunnels, dryMatterLoss, days: daysBetween(row.fill_date, row.end_date) }, req.farmId);
+  render(res, 'stages/phase2', req.params.id, { row, readings, chart, tunnels, dryMatterLoss, saved: req.query.saved === 'reading', days: daysBetween(row.fill_date, row.end_date) }, req.farmId);
 });
 
 router.post('/batches/:id/phase2', requirePermission('edit_phase2'), (req, res) => {
@@ -161,13 +161,13 @@ router.post('/batches/:id/phase2/readings', requirePermission('edit_phase2'), (r
      VALUES (@batch_id, @reading_date, @temp_c, @ammonia_ppm, @entered_by, @notes)`
   ).run({
     batch_id: id,
-    reading_date: str(b.reading_date) || new Date().toISOString().slice(0, 10),
+    reading_date: str(b.reading_date) || todayLocal(),
     temp_c: num(b.temp_c),
     ammonia_ppm: num(b.ammonia_ppm),
     entered_by: str(b.entered_by),
     notes: str(b.notes),
   });
-  res.redirect(`/batches/${id}/phase2`);
+  res.redirect(`/batches/${id}/phase2?saved=reading#add-reading`);
 });
 
 router.post('/batches/:id/phase2/readings/:readingId/delete', requirePermission('edit_phase2'), (req, res) => {

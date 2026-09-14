@@ -1,6 +1,7 @@
 const express = require('express');
 const db = require('../db');
 const { requirePermission } = require('../lib/auth');
+const { todayLocal } = require('../lib/dates');
 
 const router = express.Router();
 
@@ -31,7 +32,7 @@ router.get('/', (req, res) => {
     )
     .all(req.farmId);
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayLocal();
   const todayEntries = db
     .prepare(
       `SELECT room_harvests.*, rooms.room_no, batches.batch_code
@@ -43,7 +44,20 @@ router.get('/', (req, res) => {
     )
     .all(today, req.farmId);
 
-  res.render('harvest-log', { activeRooms, todayEntries, today, error: req.query.error || null });
+  // Echo back the pick just saved, so someone logging on a phone gets a clear
+  // confirmation of what went in without scrolling down to today's list.
+  const saved = req.query.saved
+    ? db
+        .prepare(
+          `SELECT room_harvests.*, rooms.room_no FROM room_harvests
+           JOIN rooms ON rooms.id = room_harvests.room_id
+           JOIN batches ON batches.id = room_harvests.batch_id
+           WHERE room_harvests.id = ? AND batches.farm_id = ?`
+        )
+        .get(req.query.saved, req.farmId) || null
+    : null;
+
+  res.render('harvest-log', { activeRooms, todayEntries, today, saved, error: req.query.error || null });
 });
 
 router.post('/', requirePermission('edit_harvest'), (req, res) => {
@@ -58,20 +72,20 @@ router.post('/', requirePermission('edit_harvest'), (req, res) => {
   if (!room) {
     return res.redirect(`/harvest-log?error=${encodeURIComponent('Pick a room that is currently occupied.')}`);
   }
-  db.prepare(
+  const info = db.prepare(
     `INSERT INTO room_harvests (room_id, batch_id, harvest_date, grade_a_kg, grade_b_kg, flush_number, entered_by, notes)
      VALUES (@room_id, @batch_id, @harvest_date, @grade_a_kg, @grade_b_kg, @flush_number, @entered_by, @notes)`
   ).run({
     room_id: room.id,
     batch_id: room.batch_id,
-    harvest_date: str(b.harvest_date) || new Date().toISOString().slice(0, 10),
+    harvest_date: str(b.harvest_date) || todayLocal(),
     grade_a_kg: num(b.grade_a_kg),
     grade_b_kg: num(b.grade_b_kg),
     flush_number: num(b.flush_number),
     entered_by: str(b.entered_by),
     notes: str(b.notes),
   });
-  res.redirect('/harvest-log');
+  res.redirect(`/harvest-log?saved=${info.lastInsertRowid}`);
 });
 
 router.post('/:harvestId/delete', requirePermission('edit_harvest'), (req, res) => {

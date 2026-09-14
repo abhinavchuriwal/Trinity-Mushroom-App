@@ -43,7 +43,7 @@
     <% } %>
 
     <form class="grid" method="post" action="/batches/<%= batch.id %>/rooms/<%= room.id %>/harvests" style="margin-top:0.75rem">
-      <div class="field"><label>Harvest Date</label><input type="date" name="harvest_date" required /></div>
+      <div class="field"><label>Harvest Date</label><input type="date" name="harvest_date" value="<%= today %>" required /></div>
       <div class="field">
         <label>Flush</label>
         <select name="flush_number">
@@ -53,9 +53,9 @@
           <option value="3">3rd Flush</option>
         </select>
       </div>
-      <div class="field"><label>A Grade (kg)</label><input type="number" step="any" name="grade_a_kg" /></div>
-      <div class="field"><label>B Grade (kg)</label><input type="number" step="any" name="grade_b_kg" /></div>
-      <div class="field"><label>Entered By</label><input type="text" name="entered_by" /></div>
+      <div class="field"><label>A Grade (kg)</label><input type="number" step="any" name="grade_a_kg" inputmode="decimal" /></div>
+      <div class="field"><label>B Grade (kg)</label><input type="number" step="any" name="grade_b_kg" inputmode="decimal" /></div>
+      <div class="field"><label>Entered By</label><input type="text" name="entered_by" value="<%= currentUser.full_name || currentUser.username %>" /></div>
       <div class="field wide"><label>Notes</label><input type="text" name="notes" /></div>
       <div class="form-actions"><button class="btn small" type="submit">Add Harvest Entry</button></div>
     </form>

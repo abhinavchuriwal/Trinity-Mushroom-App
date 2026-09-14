@@ -15,7 +15,13 @@
   <% } else if (!activeRooms.length) { %>
     <div class="empty-state">No rooms are currently occupied (Room In without a Room Out date yet). Once a batch reaches Room In, its room shows up here.</div>
   <% } else { %>
-    <form class="grid" method="post" action="/harvest-log">
+    <form class="grid" method="post" action="/harvest-log" id="add-pick">
+      <% if (saved) { %>
+        <div class="field wide saved-notice">
+          &#10003; Saved: <%= saved.room_no %><%= saved.flush_number ? ' · ' + ({1:'1st',2:'2nd',3:'3rd'})[saved.flush_number] + ' flush' : '' %>
+          &middot; A <%= v(saved.grade_a_kg) || 0 %> kg &middot; B <%= v(saved.grade_b_kg) || 0 %> kg
+        </div>
+      <% } %>
       <div class="field wide">
         <label>Room</label>
         <select name="room_id" required>
@@ -28,16 +34,17 @@
       <div class="field"><label>Date</label><input type="date" name="harvest_date" value="<%= today %>" required /></div>
       <div class="field">
         <label>Flush</label>
+        <%# Pickers usually log several rooms in the same flush back to back, so the last flush chosen carries over. %>
         <select name="flush_number">
           <option value="">—</option>
-          <option value="1">1st Flush</option>
-          <option value="2">2nd Flush</option>
-          <option value="3">3rd Flush</option>
+          <option value="1" <%= saved && saved.flush_number === 1 ? 'selected' : '' %>>1st Flush</option>
+          <option value="2" <%= saved && saved.flush_number === 2 ? 'selected' : '' %>>2nd Flush</option>
+          <option value="3" <%= saved && saved.flush_number === 3 ? 'selected' : '' %>>3rd Flush</option>
         </select>
       </div>
-      <div class="field"><label>A Grade (kg)</label><input type="number" step="any" name="grade_a_kg" /></div>
-      <div class="field"><label>B Grade (kg)</label><input type="number" step="any" name="grade_b_kg" /></div>
-      <div class="field"><label>Entered By</label><input type="text" name="entered_by" /></div>
+      <div class="field"><label>A Grade (kg)</label><input type="number" step="any" name="grade_a_kg" inputmode="decimal" /></div>
+      <div class="field"><label>B Grade (kg)</label><input type="number" step="any" name="grade_b_kg" inputmode="decimal" /></div>
+      <div class="field"><label>Entered By</label><input type="text" name="entered_by" value="<%= currentUser.full_name || currentUser.username %>" /></div>
       <div class="field wide"><label>Notes</label><input type="text" name="notes" /></div>
       <div class="form-actions"><button class="btn" type="submit">Log Harvest</button></div>
     </form>
