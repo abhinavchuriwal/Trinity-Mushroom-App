@@ -4,7 +4,7 @@
 
 <section class="card">
   <h2>Room In</h2>
-  <p class="muted">Log each growing room this batch's spawned/cased material is moved into. Bag counts and fill weight are recorded on the Spawning page.</p>
+  <p class="muted">Log each growing room this batch's spawned compost is filled into. Casing is applied afterwards, in the room.<% if ((batch.batch_type || 'full') !== 'growing') { %> Bag counts and fill weight are recorded on the Spawning page.<% } %></p>
 
   <% if (rooms.length) { %>
     <% rooms.forEach(function(r) { %>
@@ -47,8 +47,8 @@
 
 <div class="card">
   <form method="post" action="/batches/<%= batch.id %>/rooms-advance">
-    <label class="muted"><input type="checkbox" name="advance" value="1" style="width:auto" required /> Mark Room In complete for this batch &amp; move to Harvest</label>
-    <div class="form-actions" style="margin-top:0.5rem"><button class="btn" type="submit">Continue to Harvest</button></div>
+    <label class="muted"><input type="checkbox" name="advance" value="1" style="width:auto" required /> Mark Room In complete for this batch &amp; move to <%= nextStageLabel(batch, 'room_in') %></label>
+    <div class="form-actions" style="margin-top:0.5rem"><button class="btn" type="submit">Continue to <%= nextStageLabel(batch, 'room_in') %></button></div>
   </form>
 </div>
 

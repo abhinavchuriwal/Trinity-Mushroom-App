@@ -319,7 +319,7 @@ CREATE TABLE IF NOT EXISTS sessions (
 --               Kept for the original single-site workspace so historical
 --               batches that spanned both units stay readable as recorded.
 --   'compost' — Pre-Wetting → Phase I → Phase II → Spawning → Dispatch
---   'growing' — Receipt → Casing → Room In → Harvest → Room Out
+--   'growing' — Receipt → Room In → Casing → Harvest → Room Out
 CREATE TABLE IF NOT EXISTS farms (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT UNIQUE NOT NULL,

@@ -48,7 +48,7 @@
     <div class="field wide"><label>Notes</label><textarea name="notes"><%= v(row.notes) %></textarea></div>
     <div class="form-actions">
       <button class="btn" type="submit">Save Spawning Data</button>
-      <label class="muted"><input type="checkbox" name="advance" value="1" style="width:auto" /> Mark spawning complete &amp; move to <%= (function () { var p = stagesFor(batch.batch_type || 'full'); var i = p.findIndex(function (s) { return s.key === 'spawning'; }); return p[i + 1] ? p[i + 1].label : 'the next stage'; })() %></label>
+      <label class="muted"><input type="checkbox" name="advance" value="1" style="width:auto" /> Mark spawning complete &amp; move to <%= nextStageLabel(batch, 'spawning') %></label>
     </div>
   </form>
 </section>

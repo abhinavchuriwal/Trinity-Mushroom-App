@@ -26,10 +26,12 @@ const ALL_STAGES = {
   room_out: { key: 'room_out', label: 'Room Out', dept: 'growing', permission: 'edit_room_out', path: (id) => `/batches/${id}/room-out` },
 };
 
+// Room In comes before Casing: spawned compost is filled into the growing rooms
+// and runs there, and the casing layer is applied on top of it in the room.
 const PIPELINES = {
-  full: ['prewetting', 'phase1', 'phase2', 'spawning', 'casing', 'room_in', 'harvest', 'room_out'],
+  full: ['prewetting', 'phase1', 'phase2', 'spawning', 'room_in', 'casing', 'harvest', 'room_out'],
   compost: ['prewetting', 'phase1', 'phase2', 'spawning', 'dispatch'],
-  growing: ['receipt', 'casing', 'room_in', 'harvest', 'room_out'],
+  growing: ['receipt', 'room_in', 'casing', 'harvest', 'room_out'],
 };
 
 const UNIT_LABELS = { full: 'Full pipeline', compost: 'Compost Unit', growing: 'Growing Unit' };

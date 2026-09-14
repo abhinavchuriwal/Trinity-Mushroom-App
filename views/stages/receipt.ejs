@@ -121,7 +121,7 @@
         </div>
         <div class="form-actions">
           <button class="btn" type="submit">Record Receipt</button>
-          <label class="muted"><input type="checkbox" name="advance" value="1" style="width:auto" /> Mark received &amp; move to Casing</label>
+          <label class="muted"><input type="checkbox" name="advance" value="1" style="width:auto" /> Mark received &amp; move to <%= nextStageLabel(batch, 'receipt') %></label>
         </div>
       </form>
     <% } %>

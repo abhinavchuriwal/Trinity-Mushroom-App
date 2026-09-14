@@ -77,6 +77,14 @@ app.use((req, res, next) => {
   res.locals.daysLabel = (days) => (days === null || days === undefined ? '—' : `${days} day${days === 1 ? '' : 's'}`);
   res.locals.STAGE_META = STAGE_META;
   res.locals.stagesFor = stagesFor;
+  // Label of the stage after `fromKey` in this batch's own pipeline, for the
+  // "Mark … complete & move to …" checkboxes — a hardcoded name goes stale
+  // whenever the pipeline order changes or differs between unit types.
+  res.locals.nextStageLabel = (batch, fromKey) => {
+    const pipeline = stagesFor((batch && batch.batch_type) || 'full');
+    const idx = pipeline.findIndex((s) => s.key === fromKey);
+    return idx !== -1 && pipeline[idx + 1] ? pipeline[idx + 1].label : 'the next stage';
+  };
   // Renders <option>s for a master-data dropdown (growing rooms/tunnels/bunkers).
   // If currentValue doesn't match any active code — e.g. a batch recorded before
   // that code existed, or before farm master data was set up at all — it's kept

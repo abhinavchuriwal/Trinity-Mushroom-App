@@ -2,7 +2,7 @@
 
 A simple internal web app for logging compost batch data through the full cycle —
 Pre-Wetting (recipe + soaking), Phase I Composting, Phase II (Pasteurization &
-Conditioning), Spawning, Casing Soil Preparation, Room In, Harvest, and Room Out.
+Conditioning), Spawning, Room In, Casing Soil Preparation, Harvest, and Room Out.
 Each stage is its own page; department heads enter data for their stage, and
 parameters outside the configured QC range are flagged automatically, with a
 standard-vs-actual comparison for the whole batch.
@@ -80,7 +80,7 @@ To restore: stop the server, replace `trinity-agro.db` with a backup (deleting a
   workspace and its own batches, joined by a delivery record:
   - A **Compost Unit** batch runs Pre-Wetting → Phase I → Phase II → Spawning →
     **Dispatch**, and a **Growing Unit** batch runs **Compost Receipt** →
-    Casing → Room In → Harvest → Room Out. Neither side can open the other's
+    Room In → Casing → Harvest → Room Out. Neither side can open the other's
     batches; Admin and Farm Manager have both workspaces and can switch.
   - **Dispatch** records compost leaving: date, kg, and whether it's going to
     your own growing unit or being sold to another farm (buyer name and
@@ -136,8 +136,8 @@ To restore: stop the server, replace `trinity-agro.db` with a backup (deleting a
   its own name. If the lab result isn't in when compost is dispatched, the
   growing team sees "Awaiting lab result" rather than a blank.
 - **Departments** — within a single-site workspace, the pipeline is split in two: **Compost Dept** owns
-  Pre-Wetting, Phase I, Phase II and Spawning; **Growing Dept** owns Casing,
-  Room In, Harvest and Room Out. Everyone logged in can *view* every stage of
+  Pre-Wetting, Phase I, Phase II and Spawning; **Growing Dept** owns Room In,
+  Casing, Harvest and Room Out. Everyone logged in can *view* every stage of
   every batch (full traceability — compost staff can see how their compost
   actually yielded), but only the owning department can *save* a stage. Stages
   outside your department show a 🔒 on the tab, a "View only" banner, and greyed
@@ -200,9 +200,10 @@ To restore: stop the server, replace `trinity-agro.db` with a backup (deleting a
      fill/end date and days
   4. **Spawning** — spawning date, spawn run end date, days, no. of bags, kg/bag,
      with total fill weight calculated automatically
-  5. **Casing Soil Preparation** — material mix, chalk/lime, pH, moisture,
+  5. **Room In** — one row per growing room (room no., room-in date); the
+     spawned compost is filled into the rooms before casing
+  6. **Casing Soil Preparation** — material mix, chalk/lime, pH, moisture,
      pasteurization, layer thickness; application/end date and days
-  6. **Room In** — one row per growing room (room no., room-in date)
   7. **Harvest** — per room, a picking log (date, A grade kg, B grade kg).
      Come back to this page repeatedly as flushes happen over the cropping cycle.
   8. **Room Out** — per room: room-out date + days in room, compost fill weight,
