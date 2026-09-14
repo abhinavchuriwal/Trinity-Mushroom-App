@@ -73,7 +73,8 @@
             <th>Status</th>
             <th><%- sortLink('start_date', 'Start') %></th>
             <th><%- sortLink('days', 'Days') %></th>
-            <th><%- sortLink('cn_ratio', 'C:N') %></th>
+            <th><%- sortLink('cn_ratio', 'Recipe C:N') %></th>
+            <th><%- sortLink('final_cn_ratio', 'Final C:N') %></th>
             <th><%- sortLink('cost', 'Cost') %></th>
             <th><%- sortLink('compost_kg', 'Compost kg') %></th>
             <th><%- sortLink('harvest_kg', 'Harvest kg') %></th>
@@ -91,6 +92,7 @@
               <td><%= m.batch.start_date %></td>
               <td><%= m.totalDays !== null ? m.totalDays : '—' %></td>
               <td><%= m.intake.cnRatio !== null ? m.intake.cnRatio.toFixed(1) : '—' %></td>
+              <td><%- m.phase2.final_cn_ratio != null ? qcCell('phase2', 'final_cn_ratio', m.phase2.final_cn_ratio) : '<span class="muted">—</span>' %></td>
               <td><%= npr(m.totalCost) %></td>
               <td><%= m.totalCompostKg !== null ? m.totalCompostKg.toFixed(0) : '—' %></td>
               <td><%= m.totalHarvestKg ? m.totalHarvestKg.toFixed(1) : '—' %></td>

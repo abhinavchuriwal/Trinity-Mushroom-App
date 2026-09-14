@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS raw_materials (
   carbon_pct REAL,
   nitrogen_pct REAL,
   moisture_pct REAL,
+  ash_pct REAL,
   notes TEXT,
   active INTEGER NOT NULL DEFAULT 1,
   created_at TEXT DEFAULT (datetime('now')),
@@ -74,6 +75,8 @@ CREATE TABLE IF NOT EXISTS intake_items (
   nitrogen_pct_actual REAL,
   moisture_pct_standard REAL,
   moisture_pct_actual REAL,
+  ash_pct_standard REAL,
+  ash_pct_actual REAL,
   notes TEXT,
   created_at TEXT DEFAULT (datetime('now'))
 );
@@ -87,12 +90,20 @@ CREATE TABLE IF NOT EXISTS prewetting (
   updated_at TEXT DEFAULT (datetime('now'))
 );
 
+-- The end_* lab columns on phase1 and final_* on phase2 are MEASURED values from
+-- a compost analysis of the actual material — unlike the recipe's C:N, which is
+-- calculated from what went in. They can't be derived: the whole point of them
+-- is to show what the microbes actually did, which is carbon burned off as CO2
+-- that no recipe formula can predict.
 CREATE TABLE IF NOT EXISTS phase1 (
   batch_id INTEGER PRIMARY KEY REFERENCES batches(id) ON DELETE CASCADE,
   start_date TEXT,
   end_date TEXT,
   bunker_no TEXT,
   num_turns_planned INTEGER,
+  end_cn_ratio REAL,
+  end_nitrogen_pct REAL,
+  end_ash_pct REAL,
   notes TEXT,
   updated_at TEXT DEFAULT (datetime('now'))
 );
@@ -122,6 +133,9 @@ CREATE TABLE IF NOT EXISTS phase2 (
   pasteurization_temp_c REAL,
   pasteurization_duration_hrs REAL,
   final_moisture_pct REAL,
+  final_cn_ratio REAL,
+  final_nitrogen_pct REAL,
+  final_ash_pct REAL,
   compost_color TEXT,
   compost_texture TEXT,
   compost_smell TEXT,
@@ -375,6 +389,26 @@ const rawMaterialsCols = db.prepare('PRAGMA table_info(raw_materials)').all().ma
 if (!rawMaterialsCols.includes('moisture_pct')) {
   db.exec('ALTER TABLE raw_materials ADD COLUMN moisture_pct REAL');
 }
+if (!rawMaterialsCols.includes('ash_pct')) {
+  db.exec('ALTER TABLE raw_materials ADD COLUMN ash_pct REAL');
+}
+
+const intakeItemsColsAsh = db.prepare('PRAGMA table_info(intake_items)').all().map((c) => c.name);
+if (!intakeItemsColsAsh.includes('ash_pct_standard')) {
+  db.exec('ALTER TABLE intake_items ADD COLUMN ash_pct_standard REAL');
+}
+if (!intakeItemsColsAsh.includes('ash_pct_actual')) {
+  db.exec('ALTER TABLE intake_items ADD COLUMN ash_pct_actual REAL');
+}
+
+const addColumnsIfMissing = (table, columns) => {
+  const existing = db.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name);
+  columns.forEach((col) => {
+    if (!existing.includes(col)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} REAL`);
+  });
+};
+addColumnsIfMissing('phase1', ['end_cn_ratio', 'end_nitrogen_pct', 'end_ash_pct']);
+addColumnsIfMissing('phase2', ['final_cn_ratio', 'final_nitrogen_pct', 'final_ash_pct']);
 
 // Which flush a pick came from (1st/2nd/3rd), recorded by hand at entry time.
 // Left null on entries made before this existed, and on any pick where the
@@ -505,7 +539,23 @@ const insertParam = db.prepare(`
   VALUES (@stage, @param_key, @label, @unit, @min_value, @max_value)
 `);
 const defaultParams = [
-  { stage: 'intake', param_key: 'cn_ratio', label: 'C:N Ratio (batch)', unit: ':1', min_value: 25, max_value: 35 },
+  { stage: 'intake', param_key: 'cn_ratio', label: 'Recipe C:N (calculated)', unit: ':1', min_value: 25, max_value: 35 },
+  // Targets are only seeded where there's a sound, general basis for one. Ash
+  // depends heavily on the recipe (manure and gypsum both push it up), and the
+  // end-of-Phase-I figures vary by farm practice, so those are seeded with no
+  // target — recorded and shown, never flagged, until someone sets a standard
+  // for them in QC Settings.
+  { stage: 'intake', param_key: 'ash_pct', label: 'Recipe ash (calculated)', unit: '%', min_value: null, max_value: null },
+  { stage: 'phase1', param_key: 'end_cn_ratio', label: 'C:N at end of Phase I (measured)', unit: ':1', min_value: null, max_value: null },
+  { stage: 'phase1', param_key: 'end_nitrogen_pct', label: 'Nitrogen at end of Phase I (measured)', unit: '%', min_value: null, max_value: null },
+  { stage: 'phase1', param_key: 'end_ash_pct', label: 'Ash at end of Phase I (measured)', unit: '%', min_value: null, max_value: null },
+  // Finished compost: C:N should have narrowed to ~17-18:1 as carbon burned off.
+  // Above ~20 means composting ran short and the compost will keep working
+  // after spawning, feeding weed moulds; below ~15 means over-composted and
+  // yield potential lost.
+  { stage: 'phase2', param_key: 'final_cn_ratio', label: 'C:N at end of Phase II (measured)', unit: ':1', min_value: 15, max_value: 20 },
+  { stage: 'phase2', param_key: 'final_nitrogen_pct', label: 'Nitrogen at end of Phase II (measured)', unit: '%', min_value: 2.0, max_value: 2.3 },
+  { stage: 'phase2', param_key: 'final_ash_pct', label: 'Ash at end of Phase II (measured)', unit: '%', min_value: null, max_value: null },
   { stage: 'phase1', param_key: 'pile_temp_c', label: 'Compost temperature (bunker)', unit: '°C', min_value: 55, max_value: 70 },
   { stage: 'phase1', param_key: 'moisture_pct', label: 'Moisture', unit: '%', min_value: 68, max_value: 74 },
   { stage: 'phase1', param_key: 'ph', label: 'pH', unit: '', min_value: 7.5, max_value: 8.5 },
@@ -524,6 +574,14 @@ const defaultParams = [
 const seedParams = db.transaction((rows) => rows.forEach((r) => insertParam.run(r)));
 seedParams(defaultParams);
 
+// With a measured C:N now recorded after composting, the recipe one must say
+// it's the calculated starting figure — the two differ by ~15 points and
+// reading one for the other is exactly the mistake worth preventing. Only
+// renames the original seeded label, never one a grower has changed.
+db.prepare(
+  "UPDATE qc_parameters SET label = 'Recipe C:N (calculated)' WHERE stage = 'intake' AND param_key = 'cn_ratio' AND label = 'C:N Ratio (batch)'"
+).run();
+
 // The old fixed intake fields (straw moisture as a single QC param) were replaced
 // by the per-material raw material recipe + computed batch C:N ratio above.
 db.prepare("DELETE FROM qc_parameters WHERE stage = 'intake' AND param_key = 'straw_moisture_pct'").run();
@@ -533,16 +591,16 @@ db.prepare("DELETE FROM qc_parameters WHERE stage = 'intake' AND param_key = 'st
 // purpose — Nepal pricing varies by supplier/season and should be entered
 // locally, not assumed. Everything here is editable/deletable in Raw Materials.
 const insertMaterial = db.prepare(`
-  INSERT OR IGNORE INTO raw_materials (name, default_cost_per_kg_npr, carbon_pct, nitrogen_pct, moisture_pct, notes)
-  VALUES (@name, @default_cost_per_kg_npr, @carbon_pct, @nitrogen_pct, @moisture_pct, @notes)
+  INSERT OR IGNORE INTO raw_materials (name, default_cost_per_kg_npr, carbon_pct, nitrogen_pct, moisture_pct, ash_pct, notes)
+  VALUES (@name, @default_cost_per_kg_npr, @carbon_pct, @nitrogen_pct, @moisture_pct, @ash_pct, @notes)
 `);
 const defaultMaterials = [
-  { name: 'Paddy (Rice) Straw', default_cost_per_kg_npr: null, carbon_pct: 42, nitrogen_pct: 0.6, moisture_pct: 12, notes: 'Typical C:N ~70:1, moisture ~12% air-dried — calibrate to local supply' },
-  { name: 'Wheat Straw', default_cost_per_kg_npr: null, carbon_pct: 46, nitrogen_pct: 0.5, moisture_pct: 12, notes: 'Typical C:N ~90:1, moisture ~12% air-dried — calibrate to local supply' },
-  { name: 'Chicken Manure / Poultry Litter', default_cost_per_kg_npr: null, carbon_pct: 32, nitrogen_pct: 3.5, moisture_pct: 40, notes: 'Typical C:N ~9:1. Moisture varies a lot by bird age, diet, litter type and barn conditions — always enter the actual moisture (and actual C/N if tested) for each delivery rather than relying on this default. If gypsum was mixed in at storage to bind ammonia, enter Gypsum as its own recipe line for its actual weight rather than folding it into this material’s weight — gypsum contributes no carbon or nitrogen, so lumping it in overstates this delivery’s C and N.' },
-  { name: 'Wheat Bran', default_cost_per_kg_npr: null, carbon_pct: 40, nitrogen_pct: 2.5, moisture_pct: 10, notes: 'Typical C:N ~16:1, moisture ~10% — calibrate to local supply' },
-  { name: 'Urea', default_cost_per_kg_npr: null, carbon_pct: 0, nitrogen_pct: 46, moisture_pct: 0.5, notes: 'Pure nitrogen source, no carbon contribution, negligible moisture' },
-  { name: 'Gypsum', default_cost_per_kg_npr: null, carbon_pct: 0, nitrogen_pct: 0, moisture_pct: 3, notes: 'Structural/pH/ammonia-binding additive — no C or N contribution. Enter as its own recipe line with its own actual weight whenever it’s mixed into stored manure, rather than lumping its weight into the manure line.' },
+  { name: 'Paddy (Rice) Straw', default_cost_per_kg_npr: null, carbon_pct: 42, nitrogen_pct: 0.6, moisture_pct: 12, ash_pct: 16, notes: 'Typical C:N ~70:1, moisture ~12% air-dried — calibrate to local supply' },
+  { name: 'Wheat Straw', default_cost_per_kg_npr: null, carbon_pct: 46, nitrogen_pct: 0.5, moisture_pct: 12, ash_pct: 7, notes: 'Typical C:N ~90:1, moisture ~12% air-dried — calibrate to local supply' },
+  { name: 'Chicken Manure / Poultry Litter', default_cost_per_kg_npr: null, carbon_pct: 32, nitrogen_pct: 3.5, moisture_pct: 40, ash_pct: 25, notes: 'Typical C:N ~9:1. Moisture varies a lot by bird age, diet, litter type and barn conditions — always enter the actual moisture (and actual C/N if tested) for each delivery rather than relying on this default. If gypsum was mixed in at storage to bind ammonia, enter Gypsum as its own recipe line for its actual weight rather than folding it into this material’s weight — gypsum contributes no carbon or nitrogen, so lumping it in overstates this delivery’s C and N.' },
+  { name: 'Wheat Bran', default_cost_per_kg_npr: null, carbon_pct: 40, nitrogen_pct: 2.5, moisture_pct: 10, ash_pct: 6, notes: 'Typical C:N ~16:1, moisture ~10% — calibrate to local supply' },
+  { name: 'Urea', default_cost_per_kg_npr: null, carbon_pct: 0, nitrogen_pct: 46, moisture_pct: 0.5, ash_pct: 0, notes: 'Pure nitrogen source, no carbon contribution, negligible moisture' },
+  { name: 'Gypsum', default_cost_per_kg_npr: null, carbon_pct: 0, nitrogen_pct: 0, moisture_pct: 3, ash_pct: 80, notes: 'Structural/pH/ammonia-binding additive — no C or N contribution. Enter as its own recipe line with its own actual weight whenever it’s mixed into stored manure, rather than lumping its weight into the manure line.' },
 ];
 const seedMaterials = db.transaction((rows) => rows.forEach((r) => insertMaterial.run(r)));
 seedMaterials(defaultMaterials);
@@ -553,6 +611,14 @@ seedMaterials(defaultMaterials);
 const backfillMoisture = db.prepare('UPDATE raw_materials SET moisture_pct = ? WHERE name = ? AND moisture_pct IS NULL');
 const backfillMoistureAll = db.transaction((rows) => rows.forEach((r) => backfillMoisture.run(r.moisture_pct, r.name)));
 backfillMoistureAll(defaultMaterials);
+
+// Same for ash, added later still. Typical dry-basis figures — rice straw runs
+// high on silica, manure high on minerals. Gypsum is essentially all mineral;
+// it reads ~80% rather than 100% because a loss-on-ignition ash test drives off
+// its bound crystal water, and that's the method a compost lab will report.
+const backfillAsh = db.prepare('UPDATE raw_materials SET ash_pct = ? WHERE name = ? AND ash_pct IS NULL');
+const backfillAshAll = db.transaction((rows) => rows.forEach((r) => backfillAsh.run(r.ash_pct, r.name)));
+backfillAshAll(defaultMaterials);
 
 // Seed the starting roles exactly once, the first time this database has no
 // roles at all — unlike qc_parameters/raw_materials above, this does NOT use

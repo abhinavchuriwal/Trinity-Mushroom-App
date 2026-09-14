@@ -90,7 +90,27 @@
     <div class="table-scroll">
       <table>
         <tbody>
-          <tr><th style="width:18rem">C:N Ratio</th><td><%= spec.cn_ratio !== null ? spec.cn_ratio.toFixed(1) + ':1' : '—' %></td></tr>
+          <tr><th colspan="2" style="color:var(--green-700)">Finished compost &mdash; measured</th></tr>
+          <tr>
+            <th style="width:18rem">C:N ratio</th>
+            <td>
+              <% if (spec.final_cn_ratio !== null) { %>
+                <%- qcCell('phase2', 'final_cn_ratio', spec.final_cn_ratio) %>
+              <% } else { %>
+                <span class="qc-cell qc-high">Not yet entered</span>
+                <span class="muted">&mdash; the growing unit will see "awaiting lab result". Add it on the Phase II page before dispatching if you have it.</span>
+              <% } %>
+            </td>
+          </tr>
+          <tr><th>Nitrogen (dry basis)</th><td><% if (spec.final_nitrogen_pct !== null) { %><%- qcCell('phase2', 'final_nitrogen_pct', spec.final_nitrogen_pct) %><% } else { %>&mdash;<% } %></td></tr>
+          <tr><th>Ash (dry basis)</th><td><%= spec.final_ash_pct !== null ? spec.final_ash_pct + '%' : '—' %></td></tr>
+          <% if (spec.dry_matter_loss_pct !== null) { %>
+            <tr><th>Dry matter lost in composting</th><td><%= spec.dry_matter_loss_pct.toFixed(1) %>% <span class="muted">(indicative)</span></td></tr>
+          <% } %>
+          <tr><th colspan="2" style="padding-top:0.9rem; color:var(--green-700)">Recipe &mdash; calculated starting point</th></tr>
+          <tr><th>Recipe C:N</th><td><%= spec.recipe_cn_ratio !== null ? spec.recipe_cn_ratio.toFixed(1) + ':1' : '—' %></td></tr>
+          <tr><th>Recipe ash</th><td><%= spec.recipe_ash_pct !== null ? spec.recipe_ash_pct.toFixed(1) + '%' : '—' %></td></tr>
+          <tr><th colspan="2" style="padding-top:0.9rem; color:var(--green-700)">Process</th></tr>
           <tr><th>Recipe weight (wet / dry est.)</th><td><%= spec.recipe_wet_kg ? spec.recipe_wet_kg + ' kg' : '—' %> / <%= spec.recipe_dry_kg ? spec.recipe_dry_kg.toFixed(1) + ' kg' : '—' %></td></tr>
           <tr><th>Phase I avg temp / moisture / pH</th><td><%= spec.phase1_avg_temp_c !== null ? spec.phase1_avg_temp_c.toFixed(1) + '°C' : '—' %> / <%= spec.phase1_avg_moisture_pct !== null ? spec.phase1_avg_moisture_pct.toFixed(1) + '%' : '—' %> / <%= spec.phase1_avg_ph !== null ? spec.phase1_avg_ph.toFixed(1) : '—' %></td></tr>
           <tr><th>Pasteurization temp / duration</th><td><%= v(spec.phase2_pasteurization_temp_c) || '—' %>°C / <%= v(spec.phase2_pasteurization_duration_hrs) || '—' %> hrs</td></tr>

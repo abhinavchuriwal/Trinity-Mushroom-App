@@ -48,11 +48,14 @@
           <tr>
             <td><span class="stage-pill"><%= ({intake:'Pre-Wetting', phase1:'Phase I', phase2:'Phase II', spawning:'Spawning', casing:'Casing'})[f.stage] || f.stage %></span></td>
             <td><%= f.label %></td>
-            <td><%= f.min !== null ? f.min : '–' %>&ndash;<%= f.max !== null ? f.max : '–' %><%= f.unit %></td>
-            <td><%= f.value !== null ? f.value + f.unit : '—' %></td>
+            <% var noTarget = f.min === null && f.max === null; %>
+            <td><% if (noTarget) { %><span class="muted">No target set</span><% } else { %><%= f.min !== null ? f.min : '–' %>&ndash;<%= f.max !== null ? f.max : '–' %><%= f.unit %><% } %></td>
+            <%# Calculated values (recipe C:N, recipe ash) arrive as long floats. %>
+            <td><%= f.value !== null ? (Number.isInteger(f.value) ? f.value : Number(f.value).toFixed(1)) + f.unit : '—' %></td>
             <td>
               <% if (f.status === 'ok') { %><span class="qc-cell qc-ok"><b>OK</b></span>
               <% } else if (f.status === 'low' || f.status === 'high') { %><span class="qc-cell qc-<%= f.status %>"><b><%= f.status.toUpperCase() %></b></span>
+              <% } else if (f.value !== null && noTarget) { %><span class="muted">Recorded</span>
               <% } else { %><span class="muted">No data yet</span><% } %>
             </td>
           </tr>

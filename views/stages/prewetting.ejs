@@ -10,13 +10,14 @@
     <div class="table-scroll">
     <table>
       <thead>
-        <tr><th>Material</th><th>Wet Kg</th><th>Cost/kg</th><th>Amount</th><th>Carbon % (used)</th><th>Nitrogen % (used)</th><th>Moisture % (used)</th><th>Notes</th><th></th></tr>
+        <tr><th>Material</th><th>Wet Kg</th><th>Cost/kg</th><th>Amount</th><th>Carbon % (used)</th><th>Nitrogen % (used)</th><th>Moisture % (used)</th><th>Ash % (used)</th><th>Notes</th><th></th></tr>
       </thead>
       <tbody>
         <% intakeItems.forEach(function(it) {
              var carbonUsed = it.carbon_pct_actual !== null ? it.carbon_pct_actual : it.carbon_pct_standard;
              var nitrogenUsed = it.nitrogen_pct_actual !== null ? it.nitrogen_pct_actual : it.nitrogen_pct_standard;
              var moistureUsed = it.moisture_pct_actual !== null ? it.moisture_pct_actual : it.moisture_pct_standard;
+             var ashUsed = it.ash_pct_actual !== null ? it.ash_pct_actual : it.ash_pct_standard;
         %>
           <tr>
             <td><%= it.material_name %></td>
@@ -26,6 +27,7 @@
             <td><%= v(carbonUsed) %> <% if (it.carbon_pct_actual !== null) { %><span class="muted">(actual)</span><% } else if (carbonUsed !== null) { %><span class="muted">(std)</span><% } %></td>
             <td><%= v(nitrogenUsed) %> <% if (it.nitrogen_pct_actual !== null) { %><span class="muted">(actual)</span><% } else if (nitrogenUsed !== null) { %><span class="muted">(std)</span><% } %></td>
             <td><%= v(moistureUsed) %> <% if (it.moisture_pct_actual !== null) { %><span class="muted">(actual)</span><% } else if (moistureUsed !== null) { %><span class="muted">(std)</span><% } else { %><span class="muted">(none — treated as 0%)</span><% } %></td>
+            <td><%= v(ashUsed) %> <% if (it.ash_pct_actual !== null) { %><span class="muted">(actual)</span><% } else if (ashUsed !== null) { %><span class="muted">(std)</span><% } else { %><span class="muted">(none)</span><% } %></td>
             <td><%= v(it.notes) %></td>
             <td>
               <form method="post" action="/batches/<%= batch.id %>/intake/items/<%= it.id %>/delete" data-confirm="Remove this item?">
@@ -46,8 +48,11 @@
     &nbsp;·&nbsp; Total dry weight (est.): <strong><%= intakeSummary.totalDryKg !== null ? intakeSummary.totalDryKg.toFixed(1) + ' kg' : '—' %></strong>
     &nbsp;·&nbsp; Total recipe cost: <strong><%= npr(intakeSummary.totalCostNpr) %></strong>
     &nbsp;·&nbsp; Cost per kg compost mix: <strong><%= intakeSummary.costPerKgCompost !== null ? npr(intakeSummary.costPerKgCompost) + '/kg' : '—' %></strong>
-    &nbsp;·&nbsp; Batch C:N ratio: <strong><%- qcCell('intake', 'cn_ratio', intakeSummary.cnRatio !== null ? intakeSummary.cnRatio.toFixed(1) : null) %></strong>
+    &nbsp;·&nbsp; Recipe C:N (calculated): <strong><%- qcCell('intake', 'cn_ratio', intakeSummary.cnRatio !== null ? intakeSummary.cnRatio.toFixed(1) : null) %></strong>
     <span class="muted">(target <%= qcParam('intake','cn_ratio')?.min_value %>&ndash;<%= qcParam('intake','cn_ratio')?.max_value %>:1)</span>
+    &nbsp;·&nbsp; Recipe ash (calculated): <strong><%= intakeSummary.ashPct !== null ? intakeSummary.ashPct.toFixed(1) + '%' : '—' %></strong>
+    <% if (intakeSummary.ashPct !== null && intakeSummary.ashCoverage !== null && intakeSummary.ashCoverage < 0.999) { %><span class="muted">(partial &mdash; some materials have no ash value)</span><% } %>
+    <div class="muted" style="margin-top:0.4rem">This is the <em>starting</em> C:N, calculated from the recipe. It narrows as composting burns off carbon &mdash; the measured figure for the finished compost is recorded at the end of Phase II.</div>
   </div>
 </section>
 

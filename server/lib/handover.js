@@ -13,7 +13,16 @@ function buildSpecSnapshot(compostBatchId) {
   return {
     batch_code: m.batch.batch_code,
     start_date: m.batch.start_date,
-    cn_ratio: m.intake.cnRatio,
+    // The measured finished-compost figures come first because they're what a
+    // grower needs: the state of the compost actually being delivered. The
+    // recipe C:N is the calculated *starting* point, ~15 points higher by
+    // design, and is kept only as context under its own unambiguous name.
+    final_cn_ratio: m.phase2.final_cn_ratio ?? null,
+    final_nitrogen_pct: m.phase2.final_nitrogen_pct ?? null,
+    final_ash_pct: m.phase2.final_ash_pct ?? null,
+    dry_matter_loss_pct: m.dryMatterLoss ? m.dryMatterLoss.total : null,
+    recipe_cn_ratio: m.intake.cnRatio,
+    recipe_ash_pct: m.intake.ashPct,
     recipe_wet_kg: m.intake.totalWetKg,
     recipe_dry_kg: m.intake.totalDryKg,
     phase1_avg_temp_c: m.phase1AvgTemp,

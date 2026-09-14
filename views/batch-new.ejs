@@ -38,7 +38,7 @@
     <div class="field wide">
       <h3 style="margin-top:0.5rem">Raw Material Recipe</h3>
       <div class="qc-legend">
-        Qty is the wet, as-weighed amount. Carbon %/Nitrogen %/Moisture % are all dry-basis &mdash;
+        Qty is the wet, as-weighed amount. Carbon %/Nitrogen %/Ash % are dry-basis &mdash;
         leave any of them blank to use the material's standard value (set in Raw Materials); enter a
         tested/actual value here if you have it for this specific delivery. Moisture matters even when
         you don't have a lab number: materials vary a lot (fresh manure vs. air-dried straw), and the
@@ -60,6 +60,7 @@
               <th>Carbon % (actual)</th>
               <th>Nitrogen % (actual)</th>
               <th>Moisture % (actual)</th>
+              <th>Ash % (actual)</th>
               <th>Notes</th>
               <th></th>
             </tr>
@@ -74,7 +75,8 @@
         &nbsp;·&nbsp; Total dry weight (est.): <strong id="sum-kg-dry">0 kg</strong>
         &nbsp;·&nbsp; Total recipe cost: <strong id="sum-cost">NPR 0</strong>
         &nbsp;·&nbsp; Cost per kg compost mix: <strong id="sum-perkg">&mdash;</strong>
-        &nbsp;·&nbsp; Batch C:N ratio (estimate): <strong id="sum-cn">&mdash;</strong>
+        &nbsp;·&nbsp; Recipe C:N (calculated): <strong id="sum-cn">&mdash;</strong>
+        &nbsp;·&nbsp; Recipe ash (calculated): <strong id="sum-ash">&mdash;</strong>
       </div>
     </div>
     <% } %>
@@ -88,7 +90,7 @@
 <p class="muted">Batch code format: <strong><%= prefix %>-Nepali Fiscal Year-Your Number</strong> (e.g. <%= prefix %>-<%= fy %>-001). The fiscal year is computed from the start date (Shrawan&ndash;Ashadh). Your batch number just needs to be unique within that fiscal year.</p>
 
 <script id="material-options" type="application/json">
-  <%- JSON.stringify(rawMaterials.map(function(m){ return {id: m.id, name: m.name, cost: m.default_cost_per_kg_npr, carbon: m.carbon_pct, nitrogen: m.nitrogen_pct, moisture: m.moisture_pct}; })) %>
+  <%- JSON.stringify(rawMaterials.map(function(m){ return {id: m.id, name: m.name, cost: m.default_cost_per_kg_npr, carbon: m.carbon_pct, nitrogen: m.nitrogen_pct, moisture: m.moisture_pct, ash: m.ash_pct}; })) %>
 </script>
 
 <script>
@@ -121,6 +123,7 @@
       '<td><input type="number" step="any" name="carbon_pct_actual[]" class="carbon-input" style="width:5.5rem" placeholder="std" /></td>' +
       '<td><input type="number" step="any" name="nitrogen_pct_actual[]" class="nitrogen-input" style="width:5.5rem" placeholder="std" /></td>' +
       '<td><input type="number" step="any" name="moisture_pct_actual[]" class="moisture-input" style="width:5.5rem" placeholder="std" /></td>' +
+      '<td><input type="number" step="any" name="ash_pct_actual[]" class="ash-input" style="width:5.5rem" placeholder="std" /></td>' +
       '<td><input type="text" name="item_notes[]" style="width:8rem" /></td>' +
       '<td><button type="button" class="btn small danger remove-row">Del</button></td>';
     tbody.appendChild(tr);
@@ -131,6 +134,7 @@
     var carbonInput = tr.querySelector('.carbon-input');
     var nitrogenInput = tr.querySelector('.nitrogen-input');
     var moistureInput = tr.querySelector('.moisture-input');
+    var ashInput = tr.querySelector('.ash-input');
 
     select.addEventListener('change', function () {
       var m = materials.filter(function (m) { return String(m.id) === select.value; })[0];
@@ -141,11 +145,13 @@
         carbonInput.placeholder = m.carbon !== null ? 'std: ' + m.carbon : 'std';
         nitrogenInput.placeholder = m.nitrogen !== null ? 'std: ' + m.nitrogen : 'std';
         moistureInput.placeholder = m.moisture !== null ? 'std: ' + m.moisture : 'std';
+        ashInput.placeholder = m.ash !== null ? 'std: ' + m.ash : 'std';
       } else {
         nameInput.style.display = '';
         carbonInput.placeholder = 'std';
         nitrogenInput.placeholder = 'std';
         moistureInput.placeholder = 'std';
+        ashInput.placeholder = 'std';
       }
       recalc();
     });
@@ -155,7 +161,7 @@
       recalc();
     });
 
-    tr.querySelectorAll('.qty-input, .cost-input, .carbon-input, .nitrogen-input, .moisture-input').forEach(function (el) {
+    tr.querySelectorAll('.qty-input, .cost-input, .carbon-input, .nitrogen-input, .moisture-input, .ash-input').forEach(function (el) {
       el.addEventListener('input', recalc);
     });
   }
@@ -163,7 +169,7 @@
   // Mirrors server/lib/economics.js's summarizeIntakeItems exactly, so this
   // live preview matches what actually gets saved once the form is submitted.
   function recalc() {
-    var totalWetKg = 0, totalDryKg = 0, totalCost = 0, hasCost = false, carbonW = 0, nitrogenW = 0;
+    var totalWetKg = 0, totalDryKg = 0, totalCost = 0, hasCost = false, carbonW = 0, nitrogenW = 0, ashW = 0, ashKnownKg = 0;
     tbody.querySelectorAll('tr').forEach(function (tr) {
       var wetKg = parseFloat(tr.querySelector('.qty-input').value) || 0;
       var cost = tr.querySelector('.cost-input').value;
@@ -172,9 +178,11 @@
       var carbonActual = tr.querySelector('.carbon-input').value;
       var nitrogenActual = tr.querySelector('.nitrogen-input').value;
       var moistureActual = tr.querySelector('.moisture-input').value;
+      var ashActual = tr.querySelector('.ash-input').value;
       var carbon = carbonActual !== '' ? parseFloat(carbonActual) : (m && m.carbon !== null ? m.carbon : null);
       var nitrogen = nitrogenActual !== '' ? parseFloat(nitrogenActual) : (m && m.nitrogen !== null ? m.nitrogen : null);
       var moisture = moistureActual !== '' ? parseFloat(moistureActual) : (m && m.moisture !== null ? m.moisture : null);
+      var ash = ashActual !== '' ? parseFloat(ashActual) : (m && m.ash !== null ? m.ash : null);
       var dryKg = (moisture !== null && !isNaN(moisture)) ? wetKg * (1 - moisture / 100) : wetKg;
 
       totalWetKg += wetKg;
@@ -190,6 +198,7 @@
       }
       if (carbon !== null && !isNaN(carbon)) carbonW += dryKg * carbon;
       if (nitrogen !== null && !isNaN(nitrogen)) nitrogenW += dryKg * nitrogen;
+      if (ash !== null && !isNaN(ash)) { ashW += dryKg * ash; ashKnownKg += dryKg; }
     });
 
     document.getElementById('sum-kg').textContent = totalWetKg ? totalWetKg.toLocaleString('en-IN') + ' kg' : '0 kg';
@@ -197,6 +206,13 @@
     document.getElementById('sum-cost').textContent = hasCost ? 'NPR ' + totalCost.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : 'NPR 0';
     document.getElementById('sum-perkg').textContent = (hasCost && totalWetKg) ? 'NPR ' + (totalCost / totalWetKg).toLocaleString('en-IN', { maximumFractionDigits: 2 }) + '/kg' : '—';
     document.getElementById('sum-cn').textContent = nitrogenW > 0 ? (carbonW / nitrogenW).toFixed(1) + ':1' : '—';
+    // Averaged only over materials with an ash value, same as the server.
+    var ashEl = document.getElementById('sum-ash');
+    if (ashKnownKg > 0) {
+      ashEl.textContent = (ashW / ashKnownKg).toFixed(1) + '%' + (ashKnownKg < totalDryKg - 0.001 ? ' (partial)' : '');
+    } else {
+      ashEl.textContent = '—';
+    }
   }
 
   document.getElementById('add-row-btn').addEventListener('click', addRow);

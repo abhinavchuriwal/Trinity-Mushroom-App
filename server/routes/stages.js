@@ -6,6 +6,7 @@ const { daysBetween } = require('../lib/dates');
 const { getBatchHeader, num, str, upsert } = require('../lib/batchHelpers');
 const { advanceStage, nextStagePath, STAGE_META } = require('../lib/stages');
 const { summarizeIntakeItems } = require('../lib/economics');
+const { getBatchMetrics } = require('../lib/analytics');
 const { requirePermission } = require('../lib/auth');
 
 const router = express.Router();
@@ -65,7 +66,8 @@ router.get('/batches/:id/phase1', (req, res) => {
     { unit: '°C', band: tempParam ? { min: tempParam.min_value, max: tempParam.max_value } : null }
   );
   const bunkers = db.prepare('SELECT * FROM bunkers WHERE active = 1 ORDER BY code').all();
-  render(res, 'stages/phase1', req.params.id, { row, readings, chart, bunkers, days: daysBetween(row.start_date, row.end_date) }, req.farmId);
+  const dryMatterLoss = (getBatchMetrics(req.params.id) || {}).dryMatterLoss || null;
+  render(res, 'stages/phase1', req.params.id, { row, readings, chart, bunkers, dryMatterLoss, days: daysBetween(row.start_date, row.end_date) }, req.farmId);
 });
 
 router.post('/batches/:id/phase1', requirePermission('edit_phase1'), (req, res) => {
@@ -76,6 +78,9 @@ router.post('/batches/:id/phase1', requirePermission('edit_phase1'), (req, res) 
     end_date: str(b.end_date),
     bunker_no: str(b.bunker_no),
     num_turns_planned: num(b.num_turns_planned),
+    end_cn_ratio: num(b.end_cn_ratio),
+    end_nitrogen_pct: num(b.end_nitrogen_pct),
+    end_ash_pct: num(b.end_ash_pct),
     notes: str(b.notes),
   });
   if (b.advance) return void (advanceStage(id, 'phase1'), res.redirect(nextStagePath('phase1', id)));
@@ -120,7 +125,8 @@ router.get('/batches/:id/phase2', (req, res) => {
     { unit: '°C', band: tempParam ? { min: tempParam.min_value, max: tempParam.max_value } : null }
   );
   const tunnels = db.prepare('SELECT * FROM tunnels WHERE active = 1 ORDER BY code').all();
-  render(res, 'stages/phase2', req.params.id, { row, readings, chart, tunnels, days: daysBetween(row.fill_date, row.end_date) }, req.farmId);
+  const dryMatterLoss = (getBatchMetrics(req.params.id) || {}).dryMatterLoss || null;
+  render(res, 'stages/phase2', req.params.id, { row, readings, chart, tunnels, dryMatterLoss, days: daysBetween(row.fill_date, row.end_date) }, req.farmId);
 });
 
 router.post('/batches/:id/phase2', requirePermission('edit_phase2'), (req, res) => {
@@ -134,6 +140,9 @@ router.post('/batches/:id/phase2', requirePermission('edit_phase2'), (req, res) 
     pasteurization_temp_c: num(b.pasteurization_temp_c),
     pasteurization_duration_hrs: num(b.pasteurization_duration_hrs),
     final_moisture_pct: num(b.final_moisture_pct),
+    final_cn_ratio: num(b.final_cn_ratio),
+    final_nitrogen_pct: num(b.final_nitrogen_pct),
+    final_ash_pct: num(b.final_ash_pct),
     compost_color: str(b.compost_color),
     compost_texture: str(b.compost_texture),
     compost_smell: str(b.compost_smell),

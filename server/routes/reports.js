@@ -11,6 +11,7 @@ const SORTERS = {
   start_date: (m) => m.batch.start_date || '',
   days: (m) => m.totalDays ?? -1,
   cn_ratio: (m) => m.intake.cnRatio ?? -1,
+  final_cn_ratio: (m) => m.phase2.final_cn_ratio ?? -1,
   cost: (m) => m.totalCost ?? -1,
   compost_kg: (m) => m.totalCompostKg ?? -1,
   harvest_kg: (m) => m.totalHarvestKg ?? -1,
@@ -89,11 +90,14 @@ router.get('/export.csv', requirePermission('export_data'), (req, res) => {
   const round = (v, d = 1) => (v === null || v === undefined ? null : Number(v.toFixed(d)));
 
   const header = [
-    'batch_code', 'status', 'start_date', 'total_days', 'cn_ratio',
+    'batch_code', 'status', 'start_date', 'total_days', 'recipe_cn_ratio_calculated', 'recipe_ash_pct_calculated',
     'total_cost_npr', 'compost_kg', 'harvest_kg', 'grade_a_kg', 'grade_b_kg',
     'yield_pct', 'a_grade_yield_pct', 'a_grade_efficiency_ratio_kg_per_1000_npr',
     'phase1_avg_pile_temp_c', 'phase1_avg_moisture_pct', 'phase1_avg_ph',
+    'phase1_end_cn_ratio_measured', 'phase1_end_nitrogen_pct', 'phase1_end_ash_pct',
     'phase2_pasteurization_temp_c', 'phase2_avg_conditioning_temp_c', 'phase2_final_moisture_pct',
+    'phase2_final_cn_ratio_measured', 'phase2_final_nitrogen_pct', 'phase2_final_ash_pct',
+    'dry_matter_loss_phase1_pct', 'dry_matter_loss_phase2_pct', 'dry_matter_loss_total_pct',
     'spawn_rate_pct', 'spawning_compost_temp_c', 'casing_ph', 'casing_moisture_pct',
     'qc_flags_count', 'qc_flags',
   ];
@@ -102,11 +106,14 @@ router.get('/export.csv', requirePermission('export_data'), (req, res) => {
   allMetrics.forEach((m) => {
     lines.push(
       [
-        m.batch.batch_code, m.batch.status, m.batch.start_date, m.totalDays, round(m.intake.cnRatio),
+        m.batch.batch_code, m.batch.status, m.batch.start_date, m.totalDays, round(m.intake.cnRatio), round(m.intake.ashPct),
         round(m.totalCost, 2), round(m.totalCompostKg), round(m.totalHarvestKg), round(m.totalGradeA), round(m.totalGradeB),
         round(m.yieldPct), round(m.aGradeYieldPct), round(m.aGradeEfficiency, 2),
         round(m.phase1AvgTemp), round(m.phase1AvgMoisture), round(m.phase1AvgPh),
+        round(m.phase1.end_cn_ratio), round(m.phase1.end_nitrogen_pct, 2), round(m.phase1.end_ash_pct),
         round(m.phase2.pasteurization_temp_c), round(m.phase2AvgTemp), round(m.phase2.final_moisture_pct),
+        round(m.phase2.final_cn_ratio), round(m.phase2.final_nitrogen_pct, 2), round(m.phase2.final_ash_pct),
+        round(m.dryMatterLoss.phase1), round(m.dryMatterLoss.phase2), round(m.dryMatterLoss.total),
         round(m.spawning.spawn_rate_pct), round(m.spawning.compost_temp_c), round(m.casing.ph), round(m.casing.moisture_pct),
         m.flags.length, m.flags.map((f) => f.label).join('; '),
       ]

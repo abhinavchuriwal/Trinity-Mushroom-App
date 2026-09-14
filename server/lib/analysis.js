@@ -5,7 +5,11 @@ const { avg } = require('./analytics');
 // restating numbers.
 const CONTEXT_NOTES = {
   'intake.cn_ratio':
-    'C:N ratio governs nitrogen availability for mycelium growth — too high (excess carbon) slows colonization, too low can cause ammonia buildup and contamination risk',
+    'Recipe C:N is the calculated starting ratio of what went in (target ~25-35:1). It narrows during composting as microbes burn carbon off as CO2, so it describes the formulation, not the finished compost',
+  'phase2.final_cn_ratio':
+    'Measured C:N of the finished compost should have narrowed to ~15-20:1. Above that means composting ran short and the compost keeps working after spawning, competing with mycelium and feeding weed moulds; below means it was over-composted and yield potential lost',
+  'phase2.final_nitrogen_pct':
+    'Nitrogen in the finished compost is the main nutrient supply for the crop — too low limits yield, too high risks ammonia problems and contamination',
   'phase1.pile_temp_c':
     'Phase I peak temperature drives pathogen/weed-seed kill and microbial selectivity — too low risks incomplete pasteurization, too high can kill beneficial organisms',
   'phase1.moisture_pct': 'Phase I moisture affects microbial activity — too dry limits it, too wet causes anaerobic/compaction problems',
@@ -106,7 +110,12 @@ async function callClaude(metrics, allMetrics, roomContext, ruleText) {
     a_grade_yield_pct: roomContext ? roomContext.aGradeYieldPct : metrics.aGradeYieldPct,
     fleet_average_yield_pct: avgYield,
     completed_batches_compared: others.length,
-    cn_ratio: metrics.intake.cnRatio,
+    recipe_cn_ratio_calculated: metrics.intake.cnRatio,
+    recipe_ash_pct_calculated: metrics.intake.ashPct,
+    finished_compost_cn_ratio_measured: metrics.phase2.final_cn_ratio ?? null,
+    finished_compost_nitrogen_pct_measured: metrics.phase2.final_nitrogen_pct ?? null,
+    finished_compost_ash_pct_measured: metrics.phase2.final_ash_pct ?? null,
+    dry_matter_loss_pct_total: metrics.dryMatterLoss ? metrics.dryMatterLoss.total : null,
     phase1_avg_pile_temp_c: metrics.phase1AvgTemp,
     phase1_avg_moisture_pct: metrics.phase1AvgMoisture,
     phase1_avg_ph: metrics.phase1AvgPh,
@@ -160,13 +169,15 @@ async function generateAnalysis(metrics, allMetrics, roomContext) {
 }
 
 const FLEET_PARAM_DEFS = [
-  { key: 'intake.cn_ratio', label: 'C:N ratio', get: (m) => m.intake.cnRatio },
+  { key: 'intake.cn_ratio', label: 'Recipe C:N (calculated)', get: (m) => m.intake.cnRatio },
   { key: 'phase1.pile_temp_c', label: 'Phase I pile temp', get: (m) => m.phase1AvgTemp },
   { key: 'phase1.moisture_pct', label: 'Phase I moisture', get: (m) => m.phase1AvgMoisture },
   { key: 'phase1.ph', label: 'Phase I pH', get: (m) => m.phase1AvgPh },
   { key: 'phase2.pasteurization_temp_c', label: 'Pasteurization temp', get: (m) => m.phase2.pasteurization_temp_c },
   { key: 'phase2.temp_c', label: 'Conditioning temp', get: (m) => m.phase2AvgTemp },
   { key: 'phase2.final_moisture_pct', label: 'Final moisture', get: (m) => m.phase2.final_moisture_pct },
+  { key: 'phase2.final_cn_ratio', label: 'Finished compost C:N (measured)', get: (m) => m.phase2.final_cn_ratio ?? null },
+  { key: 'phase2.final_nitrogen_pct', label: 'Finished compost nitrogen (measured)', get: (m) => m.phase2.final_nitrogen_pct ?? null },
   { key: 'spawning.spawn_rate_pct', label: 'Spawn rate', get: (m) => m.spawning.spawn_rate_pct },
   { key: 'spawning.compost_temp_c', label: 'Compost temp at spawning', get: (m) => m.spawning.compost_temp_c },
   { key: 'casing.ph', label: 'Casing pH', get: (m) => m.casing.ph },
@@ -188,7 +199,7 @@ function buildFleetRuleAnalysis(allMetrics) {
   const avgYield = avg(withYield.map((m) => m.yieldPct));
 
   const describe = (m) =>
-    `C:N ${fmtNum(m.intake.cnRatio)}:1, Phase I avg temp ${fmtNum(m.phase1AvgTemp)}°C, spawn rate ${fmtNum(m.spawning.spawn_rate_pct)}%, casing pH ${fmtNum(m.casing.ph)}. ` +
+    `recipe C:N ${fmtNum(m.intake.cnRatio)}:1, finished compost C:N ${fmtNum(m.phase2.final_cn_ratio)}:1, Phase I avg temp ${fmtNum(m.phase1AvgTemp)}°C, spawn rate ${fmtNum(m.spawning.spawn_rate_pct)}%, casing pH ${fmtNum(m.casing.ph)}. ` +
     `Flags: ${m.flags.length ? m.flags.map((f) => f.label).join(', ') : 'none'}.`;
 
   const lines = [];
@@ -237,7 +248,9 @@ async function callClaudeFleet(allMetrics, ruleText) {
     batch_code: m.batch.batch_code,
     yield_pct: m.yieldPct,
     a_grade_yield_pct: m.aGradeYieldPct,
-    cn_ratio: m.intake.cnRatio,
+    recipe_cn_ratio_calculated: m.intake.cnRatio,
+    finished_compost_cn_ratio_measured: m.phase2.final_cn_ratio ?? null,
+    finished_compost_nitrogen_pct_measured: m.phase2.final_nitrogen_pct ?? null,
     phase1_avg_pile_temp_c: m.phase1AvgTemp,
     phase2_pasteurization_temp_c: m.phase2.pasteurization_temp_c,
     spawn_rate_pct: m.spawning.spawn_rate_pct,

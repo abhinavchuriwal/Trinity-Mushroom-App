@@ -99,6 +99,40 @@ To restore: stop the server, replace `trinity-agro.db` with a backup (deleting a
   - Batches recorded **before** the split keep the original end-to-end pipeline
     and stay readable exactly as entered — they aren't retro-fitted into the
     new shape.
+- **C:N, nitrogen and ash through the process** — there are two C:N figures,
+  and they are deliberately never shown under the same name:
+  - **Recipe C:N (calculated)** comes from what went in, weighted by dry matter
+    (target 25–35:1). It's a starting point, not a verdict on the compost.
+  - **C:N at end of Phase II (measured)** is a lab result on the finished
+    compost (target 15–20:1). It can't be calculated — it shows how much carbon
+    the microbes actually burned off, which no recipe predicts. Above ~20 means
+    composting ran short and the compost will keep working after spawning,
+    feeding weed moulds; below ~15 means over-composted and yield lost.
+  
+  The Phase I and Phase II pages each have a **Lab Analysis** panel for the
+  measured C:N, nitrogen % and ash %. Results often come back after spawning,
+  so they're a quality record rather than a go/no-go gate — ammonia clearance
+  is still the real-time readiness signal.
+
+  **Ash** is recorded per raw material (standard + per-delivery actual) and
+  gives a calculated recipe ash %. Because minerals don't burn off, the rise in
+  ash between checkpoints gives **dry matter loss** — `1 − (ash before ÷ ash
+  after)` — per phase and in total: a direct read on how hard the compost was
+  worked. The Phase I→II figure uses two lab measurements; anything starting
+  from the recipe uses a calculated ash, so it's shown as indicative. Ash also
+  reveals gypsum mixed into manure, which reads far higher in ash than manure
+  alone.
+
+  Targets are only seeded where there's a sound general basis for one. Ash
+  (heavily recipe-dependent) and the end-of-Phase-I figures start with **no
+  target**: they're recorded and shown, never flagged, until you set a standard
+  in QC Settings. A value with no target shows "Recorded", not a green OK — a
+  badge would imply it passed a check that doesn't exist.
+
+  The dispatch **spec sheet** leads with the measured finished-compost figures,
+  since that's what a grower needs, and shows the recipe C:N underneath under
+  its own name. If the lab result isn't in when compost is dispatched, the
+  growing team sees "Awaiting lab result" rather than a blank.
 - **Departments** — within a single-site workspace, the pipeline is split in two: **Compost Dept** owns
   Pre-Wetting, Phase I, Phase II and Spawning; **Growing Dept** owns Casing,
   Room In, Harvest and Room Out. Everyone logged in can *view* every stage of

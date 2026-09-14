@@ -82,15 +82,22 @@ function getBatchMetrics(batchId) {
   // Every QC-tracked parameter for this batch, standard vs. actual, whether
   // or not it's currently out of range (status can be 'ok' | 'low' | 'high' | 'na').
   const qcComparison = [
-    evaluateParam('intake', 'cn_ratio', intake.cnRatio, 'C:N Ratio'),
+    evaluateParam('intake', 'cn_ratio', intake.cnRatio, 'Recipe C:N (calculated)'),
+    evaluateParam('intake', 'ash_pct', intake.ashPct, 'Recipe ash (calculated)'),
     evaluateParam('phase1', 'pile_temp_c', phase1AvgTemp, 'Phase I avg pile temp'),
     evaluateParam('phase1', 'moisture_pct', phase1AvgMoisture, 'Phase I avg moisture'),
     evaluateParam('phase1', 'ph', phase1AvgPh, 'Phase I avg pH'),
+    evaluateParam('phase1', 'end_cn_ratio', phase1.end_cn_ratio, 'C:N at end of Phase I (measured)'),
+    evaluateParam('phase1', 'end_nitrogen_pct', phase1.end_nitrogen_pct, 'Nitrogen at end of Phase I (measured)'),
+    evaluateParam('phase1', 'end_ash_pct', phase1.end_ash_pct, 'Ash at end of Phase I (measured)'),
     evaluateParam('phase2', 'pasteurization_temp_c', phase2.pasteurization_temp_c, 'Pasteurization temp'),
     evaluateParam('phase2', 'pasteurization_duration_hrs', phase2.pasteurization_duration_hrs, 'Pasteurization duration'),
     evaluateParam('phase2', 'temp_c', phase2AvgTemp, 'Phase II avg conditioning temp'),
     evaluateParam('phase2', 'ammonia_ppm', phase2AvgAmmonia, 'Phase II avg ammonia'),
     evaluateParam('phase2', 'final_moisture_pct', phase2.final_moisture_pct, 'Final moisture'),
+    evaluateParam('phase2', 'final_cn_ratio', phase2.final_cn_ratio, 'C:N at end of Phase II (measured)'),
+    evaluateParam('phase2', 'final_nitrogen_pct', phase2.final_nitrogen_pct, 'Nitrogen at end of Phase II (measured)'),
+    evaluateParam('phase2', 'final_ash_pct', phase2.final_ash_pct, 'Ash at end of Phase II (measured)'),
     evaluateParam('spawning', 'compost_temp_c', spawning.compost_temp_c, 'Compost temp at spawning'),
     evaluateParam('spawning', 'spawn_rate_pct', spawning.spawn_rate_pct, 'Spawn rate'),
     evaluateParam('casing', 'ph', casing.ph, 'Casing pH'),
@@ -100,6 +107,25 @@ function getBatchMetrics(batchId) {
   ].filter(Boolean);
 
   const flags = qcComparison.filter((f) => f.status === 'low' || f.status === 'high');
+
+  // Dry matter loss — the reason ash is worth measuring at all. Minerals don't
+  // burn off, so while microbes consume organic matter the ash fraction rises,
+  // and the rise gives how much dry matter was lost:
+  //   loss = 1 − (ash before ÷ ash after)
+  // It shows composting intensity per phase: too little lost means composting
+  // ran short, too much means it was over-worked and yield potential spent.
+  //
+  // The Phase I → II figure uses two lab measurements and is the reliable one.
+  // Anything starting from the recipe begins at a calculated ash built from
+  // literature defaults unless actual values were entered, so it's indicative.
+  // A negative result is physically impossible — ash can't fall — and points at
+  // a sampling or data-entry problem rather than a real outcome.
+  const dmLoss = (before, after) => (before > 0 && after > 0 ? (1 - before / after) * 100 : null);
+  const dryMatterLoss = {
+    phase1: dmLoss(intake.ashPct, phase1.end_ash_pct),
+    phase2: dmLoss(phase1.end_ash_pct, phase2.final_ash_pct),
+    total: dmLoss(intake.ashPct, phase2.final_ash_pct),
+  };
 
   // Compost weight: sum of each room's own fill weight where set, else fall
   // back to the batch-wide spawning fill weight (the common single-room case).
@@ -164,6 +190,7 @@ function getBatchMetrics(batchId) {
     totalDays,
     qcComparison,
     flags,
+    dryMatterLoss,
   };
 }
 

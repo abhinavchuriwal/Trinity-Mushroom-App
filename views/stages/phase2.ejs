@@ -34,6 +34,51 @@
       <input type="number" step="any" name="final_moisture_pct" value="<%= v(row.final_moisture_pct) %>" />
       <%- qcCell('phase2','final_moisture_pct', row.final_moisture_pct) %>
     </div>
+
+    <div class="field wide">
+      <h3 style="margin:0.4rem 0 0">Lab Analysis &mdash; Finished Compost</h3>
+      <div class="qc-legend">
+        Measured from a sample of the finished compost, not calculated. C:N should have narrowed to
+        about <strong><%= qcParam('phase2','final_cn_ratio')?.min_value %>&ndash;<%= qcParam('phase2','final_cn_ratio')?.max_value %>:1</strong>
+        as carbon burned off &mdash; well above that means composting ran short and the compost will keep
+        working after spawning, feeding weed moulds; well below means it was over-composted and yield
+        potential lost. Results often arrive after spawning, so treat this as a quality record; ammonia
+        clearance remains the go/no-go signal.
+      </div>
+    </div>
+    <div class="field">
+      <label>C:N Ratio (measured)</label>
+      <input type="number" step="any" name="final_cn_ratio" value="<%= v(row.final_cn_ratio) %>" placeholder="e.g. 17.5" />
+      <%- qcCell('phase2','final_cn_ratio', row.final_cn_ratio) %>
+    </div>
+    <div class="field">
+      <label>Nitrogen % (dry basis)</label>
+      <input type="number" step="any" name="final_nitrogen_pct" value="<%= v(row.final_nitrogen_pct) %>" placeholder="e.g. 2.1" />
+      <%- qcCell('phase2','final_nitrogen_pct', row.final_nitrogen_pct) %>
+    </div>
+    <div class="field">
+      <label>Ash % (dry basis)</label>
+      <input type="number" step="any" name="final_ash_pct" value="<%= v(row.final_ash_pct) %>" />
+      <%- qcCell('phase2','final_ash_pct', row.final_ash_pct) %>
+    </div>
+    <% if (dryMatterLoss && (dryMatterLoss.phase2 !== null || dryMatterLoss.total !== null)) { %>
+      <div class="field wide">
+        <div class="qc-legend">
+          <% if (dryMatterLoss.phase2 !== null) { %>
+            Dry matter lost in Phase II: <strong><%= dryMatterLoss.phase2.toFixed(1) %>%</strong>
+            <span class="muted">(both measured)</span>
+          <% } %>
+          <% if (dryMatterLoss.phase2 !== null && dryMatterLoss.total !== null) { %>&nbsp;·&nbsp;<% } %>
+          <% if (dryMatterLoss.total !== null) { %>
+            Total since recipe: <strong><%= dryMatterLoss.total.toFixed(1) %>%</strong>
+            <span class="muted">(from calculated recipe ash &mdash; indicative)</span>
+          <% } %>
+          <% if ((dryMatterLoss.phase2 !== null && dryMatterLoss.phase2 < 0) || (dryMatterLoss.total !== null && dryMatterLoss.total < 0)) { %>
+            <br><span style="color:var(--red-600)">A negative loss is physically impossible &mdash; ash can't fall during composting. Check the sample or the entry.</span>
+          <% } %>
+        </div>
+      </div>
+    <% } %>
     <div class="field"><label>Compost Color</label><input type="text" name="compost_color" value="<%= v(row.compost_color) %>" placeholder="e.g. dark brown" /></div>
     <div class="field"><label>Compost Texture</label><input type="text" name="compost_texture" value="<%= v(row.compost_texture) %>" placeholder="e.g. friable, springy" /></div>
     <div class="field"><label>Compost Smell</label><input type="text" name="compost_smell" value="<%= v(row.compost_smell) %>" placeholder="e.g. sweet, no ammonia" /></div>

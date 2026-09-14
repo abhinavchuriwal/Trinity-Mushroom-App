@@ -27,6 +27,13 @@ function evaluate(stage, paramKey, value) {
   if (!param || value === null || value === undefined || value === '') {
     return { status: 'na', param };
   }
+  // A parameter with neither bound set has no target to judge against. It must
+  // read as 'na', not 'ok' — otherwise a value nobody has set a standard for
+  // shows a green OK, implying it passed a check that doesn't exist. Such rows
+  // are seeded deliberately, so a grower can fill in a target in QC Settings.
+  if (param.min_value === null && param.max_value === null) {
+    return { status: 'na', param };
+  }
   const v = Number(value);
   if (Number.isNaN(v)) return { status: 'na', param };
   if (param.min_value !== null && v < param.min_value) return { status: 'low', param };

@@ -13,6 +13,8 @@ function summarizeIntakeItems(items) {
   let hasCost = false;
   let carbonWeighted = 0;
   let nitrogenWeighted = 0;
+  let ashWeighted = 0;
+  let ashKnownDryKg = 0;
   items.forEach((it) => {
     const wetKg = it.qty_kg || 0;
     totalWetKg += wetKg;
@@ -33,8 +35,22 @@ function summarizeIntakeItems(items) {
     const nitrogen = it.nitrogen_pct_actual ?? it.nitrogen_pct_standard;
     if (carbon !== null && carbon !== undefined) carbonWeighted += dryKg * carbon;
     if (nitrogen !== null && nitrogen !== undefined) nitrogenWeighted += dryKg * nitrogen;
+
+    // Ash is a dry-basis percentage, so it's averaged over dry matter too.
+    const ash = it.ash_pct_actual ?? it.ash_pct_standard;
+    if (ash !== null && ash !== undefined) {
+      ashWeighted += dryKg * ash;
+      ashKnownDryKg += dryKg;
+    }
   });
   const cnRatio = nitrogenWeighted > 0 ? carbonWeighted / nitrogenWeighted : null;
+
+  // Averaged only over materials that have an ash value. Dividing by all dry
+  // matter instead would count a material with no figure as 0% ash and drag the
+  // result down; averaging over the known ones is closer, but can mislead if a
+  // large ingredient is missing — hence ashCoverage, so the screen can say so.
+  const ashPct = ashKnownDryKg > 0 ? ashWeighted / ashKnownDryKg : null;
+  const ashCoverage = totalDryKg > 0 ? ashKnownDryKg / totalDryKg : null;
   // Cost efficiency is naturally against what was physically loaded (wet), not
   // the drier, lighter figure C:N math needs.
   const costPerKgCompost = totalWetKg > 0 && hasCost ? totalCostNpr / totalWetKg : null;
@@ -43,6 +59,8 @@ function summarizeIntakeItems(items) {
     totalDryKg: totalDryKg || null,
     totalCostNpr: hasCost ? totalCostNpr : null,
     cnRatio,
+    ashPct,
+    ashCoverage,
     costPerKgCompost,
   };
 }
