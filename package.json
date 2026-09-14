@@ -1,5 +1,5 @@
 {
-  "name": "trinity-agro-batch-tracker",
+  "name": "trinity-agro-farmflow",
   "version": "1.0.0",
   "description": "Batch tracking and QC data entry for compost preparation through spawning, Trinity Agro Private Limited.",
   "private": true,

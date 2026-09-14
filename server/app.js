@@ -52,6 +52,7 @@ app.use(
 
 app.use((req, res, next) => {
   res.locals.companyName = 'Trinity Agro Private Limited';
+  res.locals.appName = 'Trinity Agro FarmFlow';
   res.locals.currentPath = req.path;
   // Farm-local date; routes that pass their own `today` override this.
   res.locals.today = todayLocal();
@@ -122,6 +123,6 @@ app.use((req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Trinity Agro Batch Tracker running at http://localhost:${PORT}`);
+  console.log(`Trinity Agro FarmFlow running at http://localhost:${PORT}`);
   require('./lib/backup').start();
 });

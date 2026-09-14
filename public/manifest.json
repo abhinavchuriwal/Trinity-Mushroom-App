@@ -1,6 +1,6 @@
 {
-  "name": "Trinity Agro Batch Tracker",
-  "short_name": "Trinity Agro",
+  "name": "Trinity Agro FarmFlow",
+  "short_name": "FarmFlow",
   "description": "Compost and growing batch records for Trinity Agro Private Limited.",
   "id": "/today",
   "start_url": "/today",

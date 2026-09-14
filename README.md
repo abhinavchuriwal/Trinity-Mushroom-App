@@ -1,4 +1,4 @@
-# Trinity Agro Batch Tracker
+# Trinity Agro FarmFlow
 
 A simple internal web app for logging compost batch data through the full cycle —
 Pre-Wetting (recipe + soaking), Phase I Composting, Phase II (Pasteurization &
@@ -23,7 +23,9 @@ Then open http://localhost:4000 in a browser. On the local network, other comput
 can reach it at `http://<this-machine's-IP>:4000`.
 
 Data is stored in a single SQLite file at
-`~/Library/Application Support/TrinityAgroBatchTracker/trinity-agro.db` — **not**
+`~/Library/Application Support/TrinityAgroBatchTracker/trinity-agro.db` (the
+folder keeps the app's earlier name, Batch Tracker, so existing data is still
+found) — **not**
 inside this project folder. That's intentional: cloud-sync services (OneDrive,
 Dropbox, Google Drive, etc.) corrupt or crash SQLite databases in WAL mode because
 they intercept file locking in ways SQLite doesn't expect, so the live database

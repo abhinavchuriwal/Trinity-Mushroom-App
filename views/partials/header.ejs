@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title><%= typeof title !== 'undefined' ? title + ' · ' : '' %><%= companyName %> Batch Tracker</title>
+  <title><%= typeof title !== 'undefined' ? title + ' · ' : '' %><%= appName %></title>
   <link rel="icon" type="image/png" href="/images/favicon.png" />
   <%# Lets Android "Install app" put Trinity Agro on the home screen, opening full-screen. %>
   <link rel="manifest" href="/manifest.json" />
@@ -16,8 +16,8 @@
     <div class="brand">
       <img src="/images/logo-header.png" alt="<%= companyName %>" class="brand-logo" />
       <div class="brand-text">
-        <span class="brand-name">Trinity Agro</span>
-        <small>COMPOST &amp; SPAWNING BATCH TRACKER</small>
+        <span class="brand-name"><span class="brand-company">Trinity Agro </span><span class="brand-product">FarmFlow</span></span>
+        <small>COMPOST &amp; MUSHROOM GROWING</small>
       </div>
     </div>
     <% if (typeof currentUser !== 'undefined' && currentUser) { %>

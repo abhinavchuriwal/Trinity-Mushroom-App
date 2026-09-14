@@ -9,6 +9,8 @@ const Database = require('better-sqlite3');
 // the live .db file lives in the OS's local application-data directory instead.
 const dataDir =
   process.env.TRINITY_DATA_DIR ||
+  // Folder keeps the app's original "Batch Tracker" name on purpose: renaming
+  // it would make an existing install start with an empty database.
   path.join(os.homedir(), 'Library', 'Application Support', 'TrinityAgroBatchTracker');
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
 

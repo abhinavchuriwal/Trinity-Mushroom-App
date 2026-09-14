@@ -64,6 +64,7 @@ header.site .brand-name {
   color: var(--green-900);
   letter-spacing: 0.01em;
 }
+header.site .brand-product { color: var(--green-600); }
 header.site .brand-text small {
   font-weight: 600;
   font-size: 0.66rem;
@@ -432,6 +433,9 @@ footer.site {
   }
   header.site .brand-logo { height: 34px; }
   header.site .brand-text small { display: none; }
+  /* The logo already reads "Trinity Agro"; the phone header only has room for the app name beside it. */
+  header.site .brand-company { display: none; }
+  header.site .brand-name { font-size: 1.15rem; }
   header.site .training-badge.mobile-only { display: inline-block; margin-left: auto; }
 
   .menu-toggle {
