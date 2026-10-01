@@ -139,14 +139,9 @@ router.post('/batches/:id/phase2', requirePermission('edit_phase2'), (req, res) 
     pasteurization_date: str(b.pasteurization_date),
     pasteurization_temp_c: num(b.pasteurization_temp_c),
     pasteurization_duration_hrs: num(b.pasteurization_duration_hrs),
-    final_moisture_pct: num(b.final_moisture_pct),
     final_cn_ratio: num(b.final_cn_ratio),
     final_nitrogen_pct: num(b.final_nitrogen_pct),
     final_ash_pct: num(b.final_ash_pct),
-    compost_color: str(b.compost_color),
-    compost_texture: str(b.compost_texture),
-    compost_smell: str(b.compost_smell),
-    ammonia_cleared: str(b.ammonia_cleared),
     notes: str(b.notes),
   });
   if (b.advance) return void (advanceStage(id, 'phase2'), res.redirect(nextStagePath('phase2', id)));
@@ -178,8 +173,12 @@ router.post('/batches/:id/phase2/readings/:readingId/delete', requirePermission(
 // ---- Spawning ----
 router.get('/batches/:id/spawning', (req, res) => {
   const row = db.prepare('SELECT * FROM spawning WHERE batch_id = ?').get(req.params.id) || {};
+  // The finished-compost checks (moisture, ammonia, colour/texture/smell) are made
+  // on the compost as it is spawned, but they describe the Phase II compost and
+  // stay in the phase2 record — that is what the dispatch spec sheet reads.
+  const finished = db.prepare('SELECT * FROM phase2 WHERE batch_id = ?').get(req.params.id) || {};
   const growingRooms = db.prepare('SELECT * FROM growing_rooms WHERE active = 1 ORDER BY code').all();
-  render(res, 'stages/spawning', req.params.id, { row, growingRooms, days: daysBetween(row.spawning_date, row.spawn_run_end_date) }, req.farmId);
+  render(res, 'stages/spawning', req.params.id, { row, finished, growingRooms, days: daysBetween(row.spawning_date, row.spawn_run_end_date) }, req.farmId);
 });
 
 router.post('/batches/:id/spawning', requirePermission('edit_spawning'), (req, res) => {
@@ -200,6 +199,13 @@ router.post('/batches/:id/spawning', requirePermission('edit_spawning'), (req, r
     fill_weight_kg: numBags !== null && kgPerBag !== null ? numBags * kgPerBag : null,
     entered_by: str(b.entered_by),
     notes: str(b.notes),
+  });
+  upsert('phase2', id, {
+    final_moisture_pct: num(b.final_moisture_pct),
+    ammonia_cleared: str(b.ammonia_cleared),
+    compost_color: str(b.compost_color),
+    compost_texture: str(b.compost_texture),
+    compost_smell: str(b.compost_smell),
   });
   if (b.advance) return void (advanceStage(id, 'spawning'), res.redirect(nextStagePath('spawning', id)));
   res.redirect(`/batches/${id}/spawning`);

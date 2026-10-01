@@ -199,7 +199,11 @@ To restore: stop the server, replace `trinity-agro.db` with a backup (deleting a
   3. **Phase II** — Pasteurization & Conditioning tunnel readings, chart;
      fill/end date and days
   4. **Spawning** — spawning date, spawn run end date, days, no. of bags, kg/bag,
-     with total fill weight calculated automatically
+     with total fill weight calculated automatically, plus the finished-compost
+     checks made as the compost is spawned (final moisture, ammonia cleared,
+     colour, texture, smell). Those five stay part of the Phase II record the
+     dispatch spec sheet is built from — they are only *entered* here, because
+     that is when the compost is last looked at.
   5. **Room In** — one row per growing room (room no., room-in date); the
      spawned compost is filled into the rooms before casing
   6. **Casing Soil Preparation** — material mix, chalk/lime, pH, moisture,
