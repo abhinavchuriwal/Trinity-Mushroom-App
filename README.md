@@ -65,7 +65,7 @@ To restore: stop the server, replace `trinity-agro.db` with a backup (deleting a
   sheet is typed straight down the screen without opening a batch at a time. A
   section only writes the fields it shows: entering a lab result on the day
   sheet leaves that stage's dates alone.
-- **Daily Readings** (`/day/readings`) — the paper Daily Bunker & Tunnel Log
+- **Daily Readings** (`/day/readings`), reached from Today and the Dashboard — the paper Daily Bunker & Tunnel Log
   (Form C-2) as a screen: every bunker and tunnel in Farm Master Data, one card
   each, with the batch that is in it already selected (matched on the bunker /
   tunnel recorded for that batch) and only ever chosen from the batches actually
@@ -73,7 +73,7 @@ To restore: stop the server, replace `trinity-agro.db` with a backup (deleting a
   line lands on its own batch as a Phase I turn reading or a Phase II
   conditioning reading. The date is editable, so yesterday's sheet can be typed
   in today.
-- **Daily Harvest** (`/harvest-log`) — a fast, cross-batch entry point for harvest
+- **Daily Harvest** (`/harvest-log`), reached from Today and the Dashboard — a fast, cross-batch entry point for harvest
   picks — the paper Daily Harvest Sheet (Form G-2) as a screen: one card per
   room in crop, with its batch shown and fixed by the room, so a pick can't be
   logged against the wrong room or batch. Fill flush and A/B grade kg for the

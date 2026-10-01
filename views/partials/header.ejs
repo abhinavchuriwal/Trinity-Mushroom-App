@@ -29,8 +29,6 @@
       <nav>
         <a href="/today">Today</a>
         <a href="/">Dashboard</a>
-        <% if (can('edit_phase1') || can('edit_phase2')) { %><a href="/day/readings">Daily Readings</a><% } %>
-        <% if (can('edit_harvest')) { %><a href="/harvest-log">Daily Harvest</a><% } %>
         <%# A growing unit's batches start at Receipt, so its New Batch belongs to the growing team, not compost. %>
         <% if (can(stagesFor(currentFarm.unit_type || 'full')[0].permission)) { %><a href="/batches/new">New Batch</a><% } %>
         <a href="/reports">Reports</a>

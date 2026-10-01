@@ -7,15 +7,20 @@
 </div>
 
 <%
-  // The two day sheets live here rather than in the top menu: the menu is for
-  // getting around, and these are where a day's work is entered.
+  // All four day sheets live here rather than in the top menu: the menu is for
+  // getting around, and these are where a day's work is entered. Today shows
+  // the same four as cards.
   var canCompostSheet = ['edit_prewetting', 'edit_phase1', 'edit_phase2', 'edit_spawning', 'edit_dispatch'].some(can);
+  var canReadings = can('edit_phase1') || can('edit_phase2');
   var canGrowingSheet = ['edit_receipt', 'edit_room_in', 'edit_casing', 'edit_room_out'].some(can);
+  var canHarvest = can('edit_harvest');
 %>
-<% if (canCompostSheet || canGrowingSheet) { %>
+<% if (canCompostSheet || canReadings || canGrowingSheet || canHarvest) { %>
   <div class="settings-nav">
     <% if (canCompostSheet) { %><a href="/day/compost">Form C-1 · Compost Day Sheet</a><% } %>
+    <% if (canReadings) { %><a href="/day/readings">Form C-2 · Daily Readings</a><% } %>
     <% if (canGrowingSheet) { %><a href="/day/growing">Form G-1 · Growing Day Sheet</a><% } %>
+    <% if (canHarvest) { %><a href="/harvest-log">Form G-2 · Daily Harvest</a><% } %>
   </div>
 <% } %>
 
