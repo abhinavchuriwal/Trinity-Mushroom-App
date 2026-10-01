@@ -141,10 +141,12 @@ To restore: stop the server, replace `trinity-agro.db` with a backup (deleting a
   spawning, so they're a quality record rather than a go/no-go gate — ammonia
   clearance is still the real-time readiness signal.
 
-  Pasteurisation temperature and hold time are not collected: Trinity Agro
-  pasteurises chemically. Batches recorded before that change keep their
-  figures, and the spec sheet and QC comparison still show them for those
-  batches only.
+  **Pasteurisation** is recorded in two different places because the farm does
+  it two different ways. The compost is pasteurised with heat in the tunnel, so
+  Phase II records the pasteurisation date, temperature and hold in hours, plus
+  the conditioning start date and the temperature the tunnel is held at. The
+  **casing** is pasteurised chemically, so the Casing page records only whether
+  it was done — no temperature, no hold.
 
   **Ash** is recorded per raw material (standard + per-delivery actual) and
   gives a calculated recipe ash %. Because minerals don't burn off, the rise in

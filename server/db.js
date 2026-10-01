@@ -454,6 +454,17 @@ if (!spawningCols.includes('kg_per_bag')) {
   db.exec('ALTER TABLE spawning ADD COLUMN kg_per_bag REAL');
 }
 
+// Conditioning follows pasteurisation in the same tunnel run: its own start
+// date and the temperature the tunnel is held at. The day-by-day readings stay
+// in phase2_readings; these two describe the run.
+const phase2Cols = db.prepare('PRAGMA table_info(phase2)').all().map((c) => c.name);
+if (!phase2Cols.includes('conditioning_date')) {
+  db.exec('ALTER TABLE phase2 ADD COLUMN conditioning_date TEXT');
+}
+if (!phase2Cols.includes('conditioning_temp_c')) {
+  db.exec('ALTER TABLE phase2 ADD COLUMN conditioning_temp_c REAL');
+}
+
 const casingCols = db.prepare('PRAGMA table_info(casing)').all().map((c) => c.name);
 if (!casingCols.includes('end_date')) {
   db.exec('ALTER TABLE casing ADD COLUMN end_date TEXT');

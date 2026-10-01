@@ -43,10 +43,7 @@
         <tr><th>Recipe ash</th><td><%= spec.recipe_ash_pct != null ? spec.recipe_ash_pct.toFixed(1) + '%' : '—' %></td></tr>
         <tr><th colspan="2" style="padding-top:0.9rem; color:var(--green-700)">Process</th></tr>
         <tr><th>Phase I avg temp / moisture / pH</th><td><%= spec.phase1_avg_temp_c != null ? spec.phase1_avg_temp_c.toFixed(1) + '°C' : '—' %> / <%= spec.phase1_avg_moisture_pct != null ? spec.phase1_avg_moisture_pct.toFixed(1) + '%' : '—' %> / <%= spec.phase1_avg_ph != null ? spec.phase1_avg_ph.toFixed(1) : '—' %></td></tr>
-        <%# Chemical pasteurisation records no temperature or hold, so the row only appears where one was measured. %>
-        <% if (spec.phase2_pasteurization_temp_c != null || spec.phase2_pasteurization_duration_hrs != null) { %>
-          <tr><th>Pasteurization temp / duration</th><td><%- qcCell('phase2', 'pasteurization_temp_c', spec.phase2_pasteurization_temp_c) %> / <%- qcCell('phase2', 'pasteurization_duration_hrs', spec.phase2_pasteurization_duration_hrs) %></td></tr>
-        <% } %>
+        <tr><th>Pasteurization temp / duration</th><td><%- qcCell('phase2', 'pasteurization_temp_c', spec.phase2_pasteurization_temp_c) %> / <%- qcCell('phase2', 'pasteurization_duration_hrs', spec.phase2_pasteurization_duration_hrs) %></td></tr>
         <tr><th>Conditioning temp / ammonia</th><td><%= spec.phase2_avg_conditioning_temp_c != null ? spec.phase2_avg_conditioning_temp_c.toFixed(1) + '°C' : '—' %> / <%= spec.phase2_avg_ammonia_ppm != null ? spec.phase2_avg_ammonia_ppm.toFixed(1) + ' ppm' : '—' %></td></tr>
         <tr><th>Final moisture / ammonia cleared</th><td><%- qcCell('phase2', 'final_moisture_pct', spec.phase2_final_moisture_pct) %> / <%= v(spec.ammonia_cleared) || '—' %></td></tr>
         <tr><th>Spawn strain / rate</th><td><%= v(spec.spawn_strain) || '—' %> / <%- qcCell('spawning', 'spawn_rate_pct', spec.spawn_rate_pct) %></td></tr>

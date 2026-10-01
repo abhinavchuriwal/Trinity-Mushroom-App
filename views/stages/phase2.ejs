@@ -22,6 +22,22 @@
       <input type="text" value="<%= daysText(row.fill_date, row.end_date) %>" disabled />
     </div>
     <div class="field"><label>Pasteurization Date</label><input type="date" name="pasteurization_date" value="<%= v(row.pasteurization_date) %>" /></div>
+    <div class="field">
+      <label>Pasteurization Temp (°C)</label>
+      <input type="number" step="any" name="pasteurization_temp_c" value="<%= v(row.pasteurization_temp_c) %>" inputmode="decimal" />
+      <%- qcCell('phase2','pasteurization_temp_c', row.pasteurization_temp_c) %>
+    </div>
+    <div class="field">
+      <label>Pasteurization Duration (hrs)</label>
+      <input type="number" step="any" name="pasteurization_duration_hrs" value="<%= v(row.pasteurization_duration_hrs) %>" inputmode="decimal" />
+      <%- qcCell('phase2','pasteurization_duration_hrs', row.pasteurization_duration_hrs) %>
+    </div>
+    <div class="field"><label>Conditioning Start Date</label><input type="date" name="conditioning_date" value="<%= v(row.conditioning_date) %>" /></div>
+    <div class="field">
+      <label>Conditioning Temp (°C)</label>
+      <input type="number" step="any" name="conditioning_temp_c" value="<%= v(row.conditioning_temp_c) %>" inputmode="decimal" />
+      <%- qcCell('phase2','temp_c', row.conditioning_temp_c) %>
+    </div>
 
     <% if (dryMatterLoss && (dryMatterLoss.phase2 !== null || dryMatterLoss.total !== null)) { %>
       <div class="field wide">

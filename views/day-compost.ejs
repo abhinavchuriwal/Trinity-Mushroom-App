@@ -86,7 +86,7 @@
           <button class="btn" type="submit">Save Phase I</button>
           <label class="muted"><input type="checkbox" name="advance" value="1" style="width:auto" /> Complete &amp; move to Phase II</label>
         </div>
-        <div class="muted" style="font-size:0.8rem">Start and end dates fill themselves as the batch moves; turn readings go on Daily Readings.</div>
+        <div class="muted" style="font-size:0.8rem">Two batches in one day: save the first, then pick the next batch and save again. Start and end dates fill themselves as the batch moves; turn readings go on Daily Readings.</div>
       </section>
     </form>
   <% } %>
@@ -100,14 +100,30 @@
         <div class="grid" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:0.85rem; align-items:end">
           <% batchPicker('phase2', batches.phase2) %>
           <div class="field"><label>Tunnel</label><select name="tunnel_id"><%- optionsFor(tunnels, null) %></select></div>
-          <div class="field"><label>Pasteurization date</label><input type="date" name="pasteurization_date" /><span class="muted" style="font-size:0.78rem">Chemical</span></div>
+          <div class="field"><label>Pasteurization date</label><input type="date" name="pasteurization_date" /></div>
+          <div class="field">
+            <label>Pasteurization temp (&deg;C)</label>
+            <input type="number" step="any" name="pasteurization_temp_c" inputmode="decimal" />
+            <span class="muted" style="font-size:0.78rem">Target <%= qcParam('phase2','pasteurization_temp_c')?.min_value %>&ndash;<%= qcParam('phase2','pasteurization_temp_c')?.max_value %></span>
+          </div>
+          <div class="field">
+            <label>Pasteurization hours</label>
+            <input type="number" step="any" name="pasteurization_duration_hrs" inputmode="decimal" />
+            <span class="muted" style="font-size:0.78rem">Target <%= qcParam('phase2','pasteurization_duration_hrs')?.min_value %>&ndash;<%= qcParam('phase2','pasteurization_duration_hrs')?.max_value %></span>
+          </div>
+          <div class="field"><label>Conditioning start date</label><input type="date" name="conditioning_date" /></div>
+          <div class="field">
+            <label>Conditioning temp (&deg;C)</label>
+            <input type="number" step="any" name="conditioning_temp_c" inputmode="decimal" />
+            <span class="muted" style="font-size:0.78rem">Target <%= qcParam('phase2','temp_c')?.min_value %>&ndash;<%= qcParam('phase2','temp_c')?.max_value %></span>
+          </div>
           <div class="field"><label>Notes</label><input type="text" name="notes" /></div>
         </div>
         <div class="form-actions">
           <button class="btn" type="submit">Save Phase II</button>
           <label class="muted"><input type="checkbox" name="advance" value="1" style="width:auto" /> Complete &amp; move to Spawning</label>
         </div>
-        <div class="muted" style="font-size:0.8rem">Fill and end dates fill themselves; conditioning readings go on Daily Readings; the lab result is entered at Spawning.</div>
+        <div class="muted" style="font-size:0.8rem">Two batches in one day: save the first, then pick the next batch and save again. Fill and end dates fill themselves; day-by-day conditioning readings go on Daily Readings; the lab result is entered at Spawning.</div>
       </section>
     </form>
   <% } %>

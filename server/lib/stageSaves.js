@@ -52,6 +52,10 @@ function savePhase2(batchId, b) {
     fill_date: ['fill_date', str],
     end_date: ['end_date', str],
     pasteurization_date: ['pasteurization_date', str],
+    pasteurization_temp_c: ['pasteurization_temp_c', num],
+    pasteurization_duration_hrs: ['pasteurization_duration_hrs', num],
+    conditioning_date: ['conditioning_date', str],
+    conditioning_temp_c: ['conditioning_temp_c', num],
     notes: ['notes', str],
   }));
 }
