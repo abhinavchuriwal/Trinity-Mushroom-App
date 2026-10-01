@@ -85,7 +85,7 @@ To restore: stop the server, replace `trinity-agro.db` with a backup (deleting a
   are still blank, and both stay editable. **Days** count up while a stage is
   open ("Day 6 · running") instead of staying blank until it closes.
 - **New Batch** — batch code is `TAPL-NepaliFiscalYear-YourNumber`
-  (e.g. `TAPL-2083/84-001`). The fiscal year (Shrawan–Ashadh) is computed
+  (e.g. `TAPL-2083-84-001`). The fiscal year (Shrawan–Ashadh) is computed
   automatically from the start date using the Bikram Sambat calendar; you choose
   the trailing number, which just needs to be unique within that fiscal year.
   Note: batches created before this format was added (e.g. `2026-001`) keep their
