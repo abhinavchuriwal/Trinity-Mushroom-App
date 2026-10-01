@@ -83,6 +83,7 @@ function getBatchMetrics(batchId) {
   // or not it's currently out of range (status can be 'ok' | 'low' | 'high' | 'na').
   const qcComparison = [
     evaluateParam('intake', 'cn_ratio', intake.cnRatio, 'Recipe C:N (calculated)'),
+    evaluateParam('intake', 'nitrogen_pct', intake.nitrogenPct, 'Recipe nitrogen (calculated)'),
     evaluateParam('intake', 'ash_pct', intake.ashPct, 'Recipe ash (calculated)'),
     evaluateParam('phase1', 'pile_temp_c', phase1AvgTemp, 'Phase I avg pile temp'),
     evaluateParam('phase1', 'moisture_pct', phase1AvgMoisture, 'Phase I avg moisture'),

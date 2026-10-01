@@ -22,6 +22,7 @@ function buildSpecSnapshot(compostBatchId) {
     final_ash_pct: m.phase2.final_ash_pct ?? null,
     dry_matter_loss_pct: m.dryMatterLoss ? m.dryMatterLoss.total : null,
     recipe_cn_ratio: m.intake.cnRatio,
+    recipe_nitrogen_pct: m.intake.nitrogenPct ?? null,
     recipe_ash_pct: m.intake.ashPct,
     recipe_wet_kg: m.intake.totalWetKg,
     recipe_dry_kg: m.intake.totalDryKg,

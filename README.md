@@ -148,6 +148,12 @@ To restore: stop the server, replace `trinity-agro.db` with a backup (deleting a
   **casing** is pasteurised chemically, so the Casing page records only whether
   it was done — no temperature, no hold.
 
+  **Recipe nitrogen (calculated)** sits beside the recipe C:N on the New Batch
+  and Pre-Wetting pages: nitrogen as a share of dry matter, weighted the same
+  way, so the starting nitrogen can be read against the lab's nitrogen figure
+  for the finished compost. Like ash, it is averaged over the materials that
+  carry a nitrogen value and marked *partial* if some don't.
+
   **Ash** is recorded per raw material (standard + per-delivery actual) and
   gives a calculated recipe ash %. Because minerals don't burn off, the rise in
   ash between checkpoints gives **dry matter loss** — `1 − (ash before ÷ ash

@@ -50,6 +50,8 @@
     &nbsp;·&nbsp; Cost per kg compost mix: <strong><%= intakeSummary.costPerKgCompost !== null ? npr(intakeSummary.costPerKgCompost) + '/kg' : '—' %></strong>
     &nbsp;·&nbsp; Recipe C:N (calculated): <strong><%- qcCell('intake', 'cn_ratio', intakeSummary.cnRatio !== null ? intakeSummary.cnRatio.toFixed(1) : null) %></strong>
     <span class="muted">(target <%= qcParam('intake','cn_ratio')?.min_value %>&ndash;<%= qcParam('intake','cn_ratio')?.max_value %>:1)</span>
+    &nbsp;·&nbsp; Recipe nitrogen (calculated): <strong><%= intakeSummary.nitrogenPct !== null ? intakeSummary.nitrogenPct.toFixed(2) + '%' : '—' %></strong>
+    <% if (intakeSummary.nitrogenPct !== null && intakeSummary.nitrogenCoverage !== null && intakeSummary.nitrogenCoverage < 0.999) { %><span class="muted">(partial)</span><% } %>
     &nbsp;·&nbsp; Recipe ash (calculated): <strong><%= intakeSummary.ashPct !== null ? intakeSummary.ashPct.toFixed(1) + '%' : '—' %></strong>
     <% if (intakeSummary.ashPct !== null && intakeSummary.ashCoverage !== null && intakeSummary.ashCoverage < 0.999) { %><span class="muted">(partial &mdash; some materials have no ash value)</span><% } %>
     <div class="muted" style="margin-top:0.4rem">This is the <em>starting</em> C:N, calculated from the recipe. It narrows as composting burns off carbon &mdash; the measured figure for the finished compost is recorded at the end of Phase II.</div>

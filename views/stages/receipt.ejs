@@ -40,6 +40,7 @@
             <span class="muted">what went in &mdash; expected to be ~15 points higher than the finished compost</span>
           </td>
         </tr>
+        <tr><th>Recipe nitrogen</th><td><%= spec.recipe_nitrogen_pct != null ? spec.recipe_nitrogen_pct.toFixed(2) + '%' : '—' %></td></tr>
         <tr><th>Recipe ash</th><td><%= spec.recipe_ash_pct != null ? spec.recipe_ash_pct.toFixed(1) + '%' : '—' %></td></tr>
         <tr><th colspan="2" style="padding-top:0.9rem; color:var(--green-700)">Process</th></tr>
         <tr><th>Phase I avg temp / moisture / pH</th><td><%= spec.phase1_avg_temp_c != null ? spec.phase1_avg_temp_c.toFixed(1) + '°C' : '—' %> / <%= spec.phase1_avg_moisture_pct != null ? spec.phase1_avg_moisture_pct.toFixed(1) + '%' : '—' %> / <%= spec.phase1_avg_ph != null ? spec.phase1_avg_ph.toFixed(1) : '—' %></td></tr>

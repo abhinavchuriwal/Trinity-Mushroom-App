@@ -15,6 +15,7 @@ function summarizeIntakeItems(items) {
   let nitrogenWeighted = 0;
   let ashWeighted = 0;
   let ashKnownDryKg = 0;
+  let nitrogenKnownDryKg = 0;
   items.forEach((it) => {
     const wetKg = it.qty_kg || 0;
     totalWetKg += wetKg;
@@ -34,7 +35,10 @@ function summarizeIntakeItems(items) {
     const carbon = it.carbon_pct_actual ?? it.carbon_pct_standard;
     const nitrogen = it.nitrogen_pct_actual ?? it.nitrogen_pct_standard;
     if (carbon !== null && carbon !== undefined) carbonWeighted += dryKg * carbon;
-    if (nitrogen !== null && nitrogen !== undefined) nitrogenWeighted += dryKg * nitrogen;
+    if (nitrogen !== null && nitrogen !== undefined) {
+      nitrogenWeighted += dryKg * nitrogen;
+      nitrogenKnownDryKg += dryKg;
+    }
 
     // Ash is a dry-basis percentage, so it's averaged over dry matter too.
     const ash = it.ash_pct_actual ?? it.ash_pct_standard;
@@ -51,6 +55,11 @@ function summarizeIntakeItems(items) {
   // large ingredient is missing — hence ashCoverage, so the screen can say so.
   const ashPct = ashKnownDryKg > 0 ? ashWeighted / ashKnownDryKg : null;
   const ashCoverage = totalDryKg > 0 ? ashKnownDryKg / totalDryKg : null;
+  // Nitrogen as a share of dry matter — the same figure the lab reports for the
+  // finished compost, so the recipe's starting nitrogen can be read against it.
+  // Averaged over the materials that carry a nitrogen figure, like ash.
+  const nitrogenPct = nitrogenKnownDryKg > 0 ? nitrogenWeighted / nitrogenKnownDryKg : null;
+  const nitrogenCoverage = totalDryKg > 0 ? nitrogenKnownDryKg / totalDryKg : null;
   // Cost efficiency is naturally against what was physically loaded (wet), not
   // the drier, lighter figure C:N math needs.
   const costPerKgCompost = totalWetKg > 0 && hasCost ? totalCostNpr / totalWetKg : null;
@@ -59,6 +68,8 @@ function summarizeIntakeItems(items) {
     totalDryKg: totalDryKg || null,
     totalCostNpr: hasCost ? totalCostNpr : null,
     cnRatio,
+    nitrogenPct,
+    nitrogenCoverage,
     ashPct,
     ashCoverage,
     costPerKgCompost,

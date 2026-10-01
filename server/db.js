@@ -586,6 +586,7 @@ const defaultParams = [
   // end-of-Phase-I figures vary by farm practice, so those are seeded with no
   // target — recorded and shown, never flagged, until someone sets a standard
   // for them in QC Settings.
+  { stage: 'intake', param_key: 'nitrogen_pct', label: 'Recipe nitrogen (calculated)', unit: '%', min_value: null, max_value: null },
   { stage: 'intake', param_key: 'ash_pct', label: 'Recipe ash (calculated)', unit: '%', min_value: null, max_value: null },
   { stage: 'phase1', param_key: 'end_cn_ratio', label: 'C:N at end of Phase I (measured)', unit: ':1', min_value: null, max_value: null },
   { stage: 'phase1', param_key: 'end_nitrogen_pct', label: 'Nitrogen at end of Phase I (measured)', unit: '%', min_value: null, max_value: null },

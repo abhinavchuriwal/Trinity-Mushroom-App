@@ -76,6 +76,7 @@
         &nbsp;·&nbsp; Total recipe cost: <strong id="sum-cost">NPR 0</strong>
         &nbsp;·&nbsp; Cost per kg compost mix: <strong id="sum-perkg">&mdash;</strong>
         &nbsp;·&nbsp; Recipe C:N (calculated): <strong id="sum-cn">&mdash;</strong>
+        &nbsp;·&nbsp; Recipe nitrogen (calculated): <strong id="sum-n">&mdash;</strong>
         &nbsp;·&nbsp; Recipe ash (calculated): <strong id="sum-ash">&mdash;</strong>
       </div>
     </div>
@@ -169,7 +170,7 @@
   // Mirrors server/lib/economics.js's summarizeIntakeItems exactly, so this
   // live preview matches what actually gets saved once the form is submitted.
   function recalc() {
-    var totalWetKg = 0, totalDryKg = 0, totalCost = 0, hasCost = false, carbonW = 0, nitrogenW = 0, ashW = 0, ashKnownKg = 0;
+    var totalWetKg = 0, totalDryKg = 0, totalCost = 0, hasCost = false, carbonW = 0, nitrogenW = 0, nitrogenKnownKg = 0, ashW = 0, ashKnownKg = 0;
     tbody.querySelectorAll('tr').forEach(function (tr) {
       var wetKg = parseFloat(tr.querySelector('.qty-input').value) || 0;
       var cost = tr.querySelector('.cost-input').value;
@@ -197,7 +198,7 @@
         amountCell.textContent = '—';
       }
       if (carbon !== null && !isNaN(carbon)) carbonW += dryKg * carbon;
-      if (nitrogen !== null && !isNaN(nitrogen)) nitrogenW += dryKg * nitrogen;
+      if (nitrogen !== null && !isNaN(nitrogen)) { nitrogenW += dryKg * nitrogen; nitrogenKnownKg += dryKg; }
       if (ash !== null && !isNaN(ash)) { ashW += dryKg * ash; ashKnownKg += dryKg; }
     });
 
@@ -206,6 +207,12 @@
     document.getElementById('sum-cost').textContent = hasCost ? 'NPR ' + totalCost.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : 'NPR 0';
     document.getElementById('sum-perkg').textContent = (hasCost && totalWetKg) ? 'NPR ' + (totalCost / totalWetKg).toLocaleString('en-IN', { maximumFractionDigits: 2 }) + '/kg' : '—';
     document.getElementById('sum-cn').textContent = nitrogenW > 0 ? (carbonW / nitrogenW).toFixed(1) + ':1' : '—';
+    // Nitrogen as a share of dry matter, averaged over the materials that have
+    // a figure — same rule as ash and as the server.
+    var nEl = document.getElementById('sum-n');
+    nEl.textContent = nitrogenKnownKg > 0
+      ? (nitrogenW / nitrogenKnownKg).toFixed(2) + '%' + (nitrogenKnownKg < totalDryKg - 0.001 ? ' (partial)' : '')
+      : '—';
     // Averaged only over materials with an ash value, same as the server.
     var ashEl = document.getElementById('sum-ash');
     if (ashKnownKg > 0) {

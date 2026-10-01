@@ -322,6 +322,7 @@ router.get('/batches/:id/export.csv', requirePermission('export_data'), (req, re
   lines.push(`Total Raw Material Cost (NPR),${summary.totalCostNpr !== null ? summary.totalCostNpr.toFixed(2) : ''}`);
   lines.push(`Cost per kg Compost Mix, wet basis (NPR),${summary.costPerKgCompost !== null ? summary.costPerKgCompost.toFixed(2) : ''}`);
   lines.push(`Recipe C:N (calculated),${summary.cnRatio !== null ? summary.cnRatio.toFixed(1) + ':1' : ''}`);
+  lines.push(`Recipe Nitrogen % (calculated),${summary.nitrogenPct !== null ? summary.nitrogenPct.toFixed(2) : ''}`);
   lines.push(`Recipe Ash % (calculated),${summary.ashPct !== null ? summary.ashPct.toFixed(1) : ''}`);
   lines.push('');
   lines.push('-- Pre-Wetting --');

@@ -109,6 +109,7 @@
           <% } %>
           <tr><th colspan="2" style="padding-top:0.9rem; color:var(--green-700)">Recipe &mdash; calculated starting point</th></tr>
           <tr><th>Recipe C:N</th><td><%= spec.recipe_cn_ratio !== null ? spec.recipe_cn_ratio.toFixed(1) + ':1' : '—' %></td></tr>
+          <tr><th>Recipe nitrogen</th><td><%= spec.recipe_nitrogen_pct != null ? spec.recipe_nitrogen_pct.toFixed(2) + '%' : '—' %></td></tr>
           <tr><th>Recipe ash</th><td><%= spec.recipe_ash_pct !== null ? spec.recipe_ash_pct.toFixed(1) + '%' : '—' %></td></tr>
           <tr><th colspan="2" style="padding-top:0.9rem; color:var(--green-700)">Process</th></tr>
           <tr><th>Recipe weight (wet / dry est.)</th><td><%= spec.recipe_wet_kg ? spec.recipe_wet_kg + ' kg' : '—' %> / <%= spec.recipe_dry_kg ? spec.recipe_dry_kg.toFixed(1) + ' kg' : '—' %></td></tr>
