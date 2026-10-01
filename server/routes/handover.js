@@ -3,6 +3,7 @@ const db = require('../db');
 const { getBatchHeader, num, str } = require('../lib/batchHelpers');
 const { advanceStage, nextStagePath } = require('../lib/stages');
 const { requirePermission } = require('../lib/auth');
+const { recordDispatch, recordReceipt } = require('../lib/stageSaves');
 const { todayLocal } = require('../lib/dates');
 const {
   buildSpecSnapshot,
@@ -42,25 +43,7 @@ router.post('/batches/:id/dispatch', requirePermission('edit_dispatch'), (req, r
   const batch = getBatchHeader(req.params.id, req.farmId);
   if (!batch) return res.status(404).render('404');
   const b = req.body;
-  const qty = num(b.qty_kg);
-  if (!qty) return res.redirect(`/batches/${batch.id}/dispatch`);
-
-  const external = b.destination_type === 'external';
-  db.prepare(
-    `INSERT INTO compost_dispatches
-       (compost_batch_id, dispatch_date, qty_kg, destination_type, buyer_name, spec_snapshot, cost_share_npr, entered_by, notes)
-     VALUES (@compost_batch_id, @dispatch_date, @qty_kg, @destination_type, @buyer_name, @spec_snapshot, @cost_share_npr, @entered_by, @notes)`
-  ).run({
-    compost_batch_id: batch.id,
-    dispatch_date: str(b.dispatch_date) || todayLocal(),
-    qty_kg: qty,
-    destination_type: external ? 'external' : 'internal',
-    buyer_name: external ? str(b.buyer_name) : null,
-    spec_snapshot: JSON.stringify(buildSpecSnapshot(batch.id)),
-    cost_share_npr: costShareFor(batch.id, qty),
-    entered_by: str(b.entered_by),
-    notes: str(b.notes),
-  });
+  if (!recordDispatch(batch.id, b)) return res.redirect(`/batches/${batch.id}/dispatch`);
 
   if (b.advance) return void (advanceStage(batch.id, 'dispatch'), res.redirect(`/batches/${batch.id}`));
   res.redirect(`/batches/${batch.id}/dispatch`);
@@ -103,23 +86,9 @@ router.post('/batches/:id/receipt', requirePermission('edit_receipt'), (req, res
   if (!batch) return res.status(404).render('404');
   const b = req.body;
 
-  // Claim an unclaimed internal dispatch for this growing batch. Guarded on
-  // growing_batch_id still being null so two growing batches can't both claim
-  // the same delivery.
-  const claimed = db
-    .prepare(
-      `UPDATE compost_dispatches
-         SET growing_batch_id = ?, receipt_date = ?, received_qty_kg = ?
-       WHERE id = ? AND destination_type = 'internal' AND growing_batch_id IS NULL`
-    )
-    .run(
-      batch.id,
-      str(b.receipt_date) || todayLocal(),
-      num(b.received_qty_kg),
-      num(b.dispatch_id)
-    );
+  const claimed = recordReceipt(batch.id, b);
 
-  if (claimed.changes && b.advance) {
+  if (claimed && b.advance) {
     advanceStage(batch.id, 'receipt');
     return res.redirect(nextStagePath('receipt', batch.id));
   }

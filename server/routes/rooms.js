@@ -1,6 +1,7 @@
 const express = require('express');
 const db = require('../db');
 const { daysBetween } = require('../lib/dates');
+const { addRoom, saveRoomOut } = require('../lib/stageSaves');
 const { getBatchHeader, num, str } = require('../lib/batchHelpers');
 const { advanceStage, nextStagePath } = require('../lib/stages');
 const { getBatchMetrics, getAllBatchMetrics } = require('../lib/analytics');
@@ -21,18 +22,7 @@ router.get('/batches/:id/rooms', (req, res) => {
 router.post('/batches/:id/rooms', requirePermission('edit_room_in'), (req, res) => {
   const id = req.params.id;
   const b = req.body;
-  if (!str(b.room_no)) return res.redirect(`/batches/${id}/rooms`);
-
-  db.prepare(
-    `INSERT INTO rooms (batch_id, room_no, room_in_date, entered_by, notes)
-     VALUES (@batch_id, @room_no, @room_in_date, @entered_by, @notes)`
-  ).run({
-    batch_id: id,
-    room_no: str(b.room_no),
-    room_in_date: str(b.room_in_date),
-    entered_by: str(b.entered_by),
-    notes: str(b.notes),
-  });
+  addRoom(id, b);
   res.redirect(`/batches/${id}/rooms`);
 });
 
@@ -160,9 +150,7 @@ router.get('/batches/:id/room-out', (req, res) => {
 
 router.post('/batches/:id/rooms/:roomId/roomout', requirePermission('edit_room_out'), (req, res) => {
   const { id, roomId } = req.params;
-  db.prepare(
-    "UPDATE rooms SET room_out_date = ?, total_fill_weight_kg = ?, updated_at = datetime('now') WHERE id = ? AND batch_id = ?"
-  ).run(str(req.body.room_out_date), num(req.body.compost_fill_weight_kg), roomId, id);
+  saveRoomOut(id, roomId, req.body);
   res.redirect(`/batches/${id}/room-out`);
 });
 

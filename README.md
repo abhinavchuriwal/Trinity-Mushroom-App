@@ -56,6 +56,14 @@ To restore: stop the server, replace `trinity-agro.db` with a backup (deleting a
 ## What's in it
 
 - **Dashboard** — list of all batches, current stage, status.
+- **Compost Day Sheet** (`/day/compost`) and **Growing Day Sheet**
+  (`/day/growing`) — the paper day sheets (Forms C-1 and G-1) as screens, with
+  the same numbered sections in the same order. Each section names its own batch
+  from a dropdown of the batches actually at that step in this workspace, and
+  saves on its own through the same code as that batch's stage page, so a day's
+  sheet is typed straight down the screen without opening a batch at a time. A
+  section only writes the fields it shows: entering a lab result on the day
+  sheet leaves that stage's dates alone.
 - **Daily Readings** (`/day/readings`) — the paper Daily Bunker & Tunnel Log
   (Form C-2) as a screen: every bunker and tunnel in Farm Master Data, one card
   each, with the batch that is in it already selected (matched on the bunker /

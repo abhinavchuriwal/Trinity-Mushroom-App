@@ -1,0 +1,238 @@
+<% var title = 'Growing Day Sheet' %>
+<%- include('partials/header') %>
+
+<%
+  function batchPicker(list) {
+%>
+  <div class="field">
+    <label>Batch</label>
+    <select name="batch_id" required>
+      <option value="">— Select batch —</option>
+      <% list.forEach(function (x) { %><option value="<%= x.id %>"><%= x.batch_code %></option><% }) %>
+    </select>
+  </div>
+<%
+  }
+  function sectionHead(num, label, list) {
+%>
+  <div class="today-sec">
+    <span class="n"><%= num %></span>
+    <h2><%= label %></h2>
+    <span class="sheet">Sheet G-1 · <%= num %></span>
+  </div>
+  <% if (list && !list.length) { %>
+    <div class="today-empty">No batch is at this step right now.</div>
+  <% } %>
+<%
+  }
+%>
+
+<div class="today-head">
+  <h1>Growing Day Sheet</h1>
+  <div class="muted">Form G-1 on screen &mdash; <%= today %> &middot; <%= currentFarm.name %></div>
+</div>
+
+<% if (saved) { %><div class="saved-notice" style="margin-bottom:1rem">&#10003; <%= saved %></div><% } %>
+
+<div class="qc-legend" style="margin-bottom:1rem">
+  Daily picks are on <a href="/harvest-log"><strong>Daily Harvest</strong></a> (Form G-2). This sheet is for the once-per-batch steps.
+</div>
+
+<div class="today-sec"><span class="n">1</span><h2>New Batch, Compost Receipt &amp; Room In</h2><span class="sheet">Sheet G-1 · 1</span></div>
+
+<% if (canCreate) { %>
+  <section class="card day-row">
+    <div class="task-facts">
+      <% if (unclaimed.length) { %>
+        <strong><%= unclaimed.length %> deliver<%= unclaimed.length === 1 ? 'y' : 'ies' %> waiting to be received.</strong>
+        Start a batch for compost that has arrived, then record the receipt below.
+      <% } else { %>
+        Start a batch for compost that has arrived.
+      <% } %>
+    </div>
+    <div class="task-actions"><a class="btn<%= unclaimed.length ? '' : ' secondary' %>" href="/batches/new">Start a new batch</a></div>
+  </section>
+<% } %>
+
+<% if (mine.includes('receipt')) { %>
+  <form method="post" action="/day/section/receipt">
+    <section class="card day-row">
+      <div class="day-row-head"><h2>Compost Receipt</h2></div>
+      <% if (!batches.receipt.length) { %>
+        <div class="today-empty">No batch is waiting for compost.</div>
+      <% } else if (!unclaimed.length) { %>
+        <div class="today-empty">Nothing dispatched is waiting to be received.</div>
+      <% } else { %>
+        <div class="grid" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:0.85rem; align-items:end">
+          <% batchPicker(batches.receipt) %>
+          <div class="field">
+            <label>Delivery</label>
+            <select name="dispatch_id" required>
+              <option value="">— Select delivery —</option>
+              <% unclaimed.forEach(function (d) { %>
+                <option value="<%= d.id %>"><%= d.spec && d.spec.batch_code ? d.spec.batch_code : 'Compost batch' %> &middot; <%= d.qty_kg %> kg &middot; <%= d.dispatch_date %></option>
+              <% }) %>
+            </select>
+          </div>
+          <div class="field"><label>Receipt date</label><input type="date" name="receipt_date" value="<%= today %>" /></div>
+          <div class="field"><label>Weight received (kg)</label><input type="number" step="any" name="received_qty_kg" inputmode="decimal" placeholder="if different" /></div>
+        </div>
+        <div class="form-actions">
+          <button class="btn" type="submit">Record Receipt</button>
+          <label class="muted"><input type="checkbox" name="advance" value="1" style="width:auto" /> Complete &amp; move to Room In</label>
+        </div>
+      <% } %>
+    </section>
+  </form>
+<% } %>
+
+<% if (mine.includes('room_in')) { %>
+  <form method="post" action="/day/section/room_in">
+    <section class="card day-row">
+      <div class="day-row-head"><h2>Room In</h2></div>
+      <% if (!batches.room_in.length) { %>
+        <div class="today-empty">No batch is ready to go into a room.</div>
+      <% } else { %>
+        <div class="grid" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:0.85rem; align-items:end">
+          <% batchPicker(batches.room_in) %>
+          <div class="field"><label>Room</label><select name="room_no" required><%- optionsFor(growingRooms, null) %></select></div>
+          <div class="field"><label>Room in date</label><input type="date" name="room_in_date" value="<%= today %>" /></div>
+          <div class="field"><label>Entered by</label><input type="text" name="entered_by" value="<%= currentUser.full_name || currentUser.username %>" /></div>
+          <div class="field"><label>Notes</label><input type="text" name="notes" /></div>
+        </div>
+        <div class="form-actions">
+          <button class="btn" type="submit">Save Room In</button>
+          <label class="muted"><input type="checkbox" name="advance" value="1" style="width:auto" /> All rooms filled — move to Casing</label>
+        </div>
+      <% } %>
+    </section>
+  </form>
+<% } %>
+
+<% if (mine.includes('room_out')) { %>
+  <% sectionHead(2, 'Room Out', null) %>
+  <form method="post" action="/day/section/room_out">
+    <section class="card day-row">
+      <% if (!rooms.length) { %>
+        <div class="today-empty">No room is in crop right now.</div>
+      <% } else { %>
+        <div class="grid" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:0.85rem; align-items:end">
+          <div class="field">
+            <label>Room</label>
+            <select name="room_id" required>
+              <option value="">— Select room —</option>
+              <% rooms.forEach(function (r) { %>
+                <option value="<%= r.id %>"><%= r.room_no %> &middot; <%= r.batch_code %></option>
+              <% }) %>
+            </select>
+          </div>
+          <div class="field"><label>Room out date</label><input type="date" name="room_out_date" value="<%= today %>" /></div>
+          <div class="field"><label>Compost fill weight (kg)</label><input type="number" step="any" name="compost_fill_weight_kg" inputmode="decimal" /></div>
+        </div>
+        <div class="form-actions">
+          <button class="btn" type="submit">Save Room Out</button>
+          <label class="muted"><input type="checkbox" name="advance" value="1" style="width:auto" /> Last room — close this batch</label>
+        </div>
+      <% } %>
+    </section>
+  </form>
+<% } %>
+
+<% if (mine.includes('casing')) { %>
+  <% sectionHead(3, 'Casing Soil Preparation', batches.casing) %>
+  <% if (batches.casing.length) { %>
+    <form method="post" action="/day/section/casing_item">
+      <section class="card day-row">
+        <div class="task-facts">One line per material. The app adds up the mix's weight and cost.</div>
+        <div class="grid" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:0.85rem; align-items:end">
+          <% batchPicker(batches.casing) %>
+          <div class="field">
+            <label>Material</label>
+            <select name="raw_material_id" id="day-casing-material" required>
+              <option value="">— Select —</option>
+              <% casingMaterials.forEach(function (m) { %>
+                <option value="<%= m.id %>" data-cost="<%= m.default_cost_per_kg_npr !== null ? m.default_cost_per_kg_npr : '' %>"><%= m.name %></option>
+              <% }) %>
+            </select>
+          </div>
+          <div class="field"><label>Qty (kg)</label><input type="number" step="any" name="qty_kg" inputmode="decimal" required /></div>
+          <div class="field"><label>Cost (NPR/kg)</label><input type="number" step="any" name="cost_per_kg_npr" id="day-casing-cost" inputmode="decimal" placeholder="from Raw Materials" /></div>
+        </div>
+        <div class="form-actions"><button class="btn" type="submit">Add to Mix</button></div>
+
+        <% batches.casing.forEach(function (bt) { %>
+          <% if ((casingItems[bt.id] || []).length) { %>
+            <div class="qc-legend" style="margin-top:0.7rem">
+              <strong class="batch-code"><%= bt.batch_code %></strong>:
+              <% casingItems[bt.id].forEach(function (it, i) { %><%= i ? ' · ' : ' ' %><%= it.material_name %> <%= it.qty_kg %> kg<% }) %>
+              &nbsp;=&nbsp; <strong><%= casingItems[bt.id].reduce(function (s, it) { return s + (it.qty_kg || 0); }, 0).toLocaleString('en-IN') %> kg</strong>
+            </div>
+          <% } %>
+        <% }) %>
+      </section>
+    </form>
+
+    <form method="post" action="/day/section/casing">
+      <section class="card day-row">
+        <div class="day-row-head"><h2>Prep details</h2></div>
+        <div class="grid" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:0.85rem; align-items:end">
+          <% batchPicker(batches.casing) %>
+          <div class="field"><label>Prep date</label><input type="date" name="prep_date" value="<%= today %>" /></div>
+          <div class="field">
+            <label>Pasteurized?</label>
+            <select name="pasteurized"><option value="">—</option><option value="yes">Yes</option><option value="no">No</option></select>
+            <span class="muted" style="font-size:0.78rem">Chemical</span>
+          </div>
+        </div>
+        <div class="form-actions"><button class="btn" type="submit">Save prep details</button></div>
+      </section>
+    </form>
+
+    <% sectionHead(4, 'Casing Application', batches.casing) %>
+    <form method="post" action="/day/section/casing">
+      <section class="card day-row">
+        <div class="grid" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:0.85rem; align-items:end">
+          <% batchPicker(batches.casing) %>
+          <div class="field"><label>Application date</label><input type="date" name="application_date" value="<%= today %>" /></div>
+          <div class="field"><label>End date</label><input type="date" name="end_date" /></div>
+          <div class="field"><label>Room</label><select name="room_id"><%- optionsFor(growingRooms, null) %></select></div>
+          <div class="field">
+            <label>pH</label>
+            <input type="number" step="any" name="ph" inputmode="decimal" />
+            <span class="muted" style="font-size:0.78rem">Target <%= qcParam('casing','ph')?.min_value %>&ndash;<%= qcParam('casing','ph')?.max_value %></span>
+          </div>
+          <div class="field">
+            <label>Moisture (%)</label>
+            <input type="number" step="any" name="moisture_pct" inputmode="decimal" />
+            <span class="muted" style="font-size:0.78rem">Target <%= qcParam('casing','moisture_pct')?.min_value %>&ndash;<%= qcParam('casing','moisture_pct')?.max_value %></span>
+          </div>
+          <div class="field">
+            <label>Layer thickness (inches)</label>
+            <input type="number" step="any" name="layer_thickness_in" inputmode="decimal" />
+            <span class="muted" style="font-size:0.78rem">Target <%= qcParam('casing','layer_thickness_in')?.min_value %>&ndash;<%= qcParam('casing','layer_thickness_in')?.max_value %></span>
+          </div>
+          <div class="field"><label>Entered by</label><input type="text" name="entered_by" value="<%= currentUser.full_name || currentUser.username %>" /></div>
+        </div>
+        <div class="form-actions">
+          <button class="btn" type="submit">Save Casing Application</button>
+          <label class="muted"><input type="checkbox" name="advance" value="1" style="width:auto" /> Complete &amp; move on</label>
+        </div>
+      </section>
+    </form>
+  <% } %>
+<% } %>
+
+<script>
+  (function () {
+    var sel = document.getElementById('day-casing-material');
+    var cost = document.getElementById('day-casing-cost');
+    if (!sel || !cost) return;
+    sel.addEventListener('change', function () {
+      var opt = sel.options[sel.selectedIndex];
+      var std = opt && opt.getAttribute('data-cost');
+      if (std) cost.value = std;
+    });
+  })();
+</script>
+
+<%- include('partials/footer') %>

@@ -8,6 +8,15 @@ const { advanceStage, nextStagePath, STAGE_META } = require('../lib/stages');
 const { summarizeIntakeItems } = require('../lib/economics');
 const { getBatchMetrics } = require('../lib/analytics');
 const { requirePermission } = require('../lib/auth');
+const {
+  savePrewetting,
+  savePhase1,
+  savePhase2,
+  saveSpawning,
+  saveCasing,
+  syncCasingQuantity,
+  addCasingItem,
+} = require('../lib/stageSaves');
 
 const router = express.Router();
 
@@ -41,12 +50,7 @@ router.get('/batches/:id/prewetting', (req, res) => {
 router.post('/batches/:id/prewetting', requirePermission('edit_prewetting'), (req, res) => {
   const id = req.params.id;
   const b = req.body;
-  upsert('prewetting', id, {
-    in_date: str(b.in_date),
-    out_date: str(b.out_date),
-    entered_by: str(b.entered_by),
-    notes: str(b.notes),
-  });
+  savePrewetting(id, b);
   if (b.advance) return void (advanceStage(id, 'prewetting'), res.redirect(nextStagePath('prewetting', id)));
   res.redirect(`/batches/${id}/prewetting`);
 });
@@ -73,16 +77,7 @@ router.get('/batches/:id/phase1', (req, res) => {
 router.post('/batches/:id/phase1', requirePermission('edit_phase1'), (req, res) => {
   const id = req.params.id;
   const b = req.body;
-  upsert('phase1', id, {
-    start_date: str(b.start_date),
-    end_date: str(b.end_date),
-    bunker_no: str(b.bunker_no),
-    num_turns_planned: num(b.num_turns_planned),
-    end_cn_ratio: num(b.end_cn_ratio),
-    end_nitrogen_pct: num(b.end_nitrogen_pct),
-    end_ash_pct: num(b.end_ash_pct),
-    notes: str(b.notes),
-  });
+  savePhase1(id, b);
   if (b.advance) return void (advanceStage(id, 'phase1'), res.redirect(nextStagePath('phase1', id)));
   res.redirect(`/batches/${id}/phase1`);
 });
@@ -132,13 +127,7 @@ router.get('/batches/:id/phase2', (req, res) => {
 router.post('/batches/:id/phase2', requirePermission('edit_phase2'), (req, res) => {
   const id = req.params.id;
   const b = req.body;
-  upsert('phase2', id, {
-    tunnel_id: str(b.tunnel_id),
-    fill_date: str(b.fill_date),
-    end_date: str(b.end_date),
-    pasteurization_date: str(b.pasteurization_date),
-    notes: str(b.notes),
-  });
+  savePhase2(id, b);
   if (b.advance) return void (advanceStage(id, 'phase2'), res.redirect(nextStagePath('phase2', id)));
   res.redirect(`/batches/${id}/phase2`);
 });
@@ -181,30 +170,7 @@ router.post('/batches/:id/spawning', requirePermission('edit_spawning'), (req, r
   const b = req.body;
   const numBags = num(b.num_bags);
   const kgPerBag = num(b.kg_per_bag);
-  upsert('spawning', id, {
-    spawning_date: str(b.spawning_date),
-    spawn_run_end_date: str(b.spawn_run_end_date),
-    spawn_strain: str(b.spawn_strain),
-    spawn_rate_pct: num(b.spawn_rate_pct),
-    spawning_method: str(b.spawning_method),
-    compost_temp_c: num(b.compost_temp_c),
-    room_id: str(b.room_id),
-    num_bags: numBags,
-    kg_per_bag: kgPerBag,
-    fill_weight_kg: numBags !== null && kgPerBag !== null ? numBags * kgPerBag : null,
-    entered_by: str(b.entered_by),
-    notes: str(b.notes),
-  });
-  upsert('phase2', id, {
-    final_cn_ratio: num(b.final_cn_ratio),
-    final_nitrogen_pct: num(b.final_nitrogen_pct),
-    final_ash_pct: num(b.final_ash_pct),
-    final_moisture_pct: num(b.final_moisture_pct),
-    ammonia_cleared: str(b.ammonia_cleared),
-    compost_color: str(b.compost_color),
-    compost_texture: str(b.compost_texture),
-    compost_smell: str(b.compost_smell),
-  });
+  saveSpawning(id, b);
   if (b.advance) return void (advanceStage(id, 'spawning'), res.redirect(nextStagePath('spawning', id)));
   res.redirect(`/batches/${id}/spawning`);
 });
@@ -250,23 +216,7 @@ router.get('/batches/:id/casing', (req, res) => {
 // a past batch actually paid.
 router.post('/batches/:id/casing/items', requirePermission('edit_casing'), (req, res) => {
   const id = req.params.id;
-  const b = req.body;
-  const qty = num(b.qty_kg);
-  const material = b.raw_material_id ? db.prepare('SELECT * FROM raw_materials WHERE id = ?').get(b.raw_material_id) : null;
-  const name = str(b.material_name) || (material ? material.name : null);
-  if (!qty || !name) return res.redirect(`/batches/${id}/casing`);
-  db.prepare(
-    `INSERT INTO casing_items (batch_id, raw_material_id, material_name, qty_kg, cost_per_kg_npr, notes)
-     VALUES (@batch_id, @raw_material_id, @material_name, @qty_kg, @cost_per_kg_npr, @notes)`
-  ).run({
-    batch_id: id,
-    raw_material_id: material ? material.id : null,
-    material_name: name,
-    qty_kg: qty,
-    cost_per_kg_npr: num(b.cost_per_kg_npr) ?? (material ? material.default_cost_per_kg_npr : null),
-    notes: str(b.notes),
-  });
-  syncCasingQuantity(id);
+  addCasingItem(id, req.body);
   res.redirect(`/batches/${id}/casing`);
 });
 
@@ -276,28 +226,11 @@ router.post('/batches/:id/casing/items/:itemId/delete', requirePermission('edit_
   res.redirect(`/batches/${req.params.id}/casing`);
 });
 
-// Total mix weight is the sum of the lines, not typed separately.
-function syncCasingQuantity(batchId) {
-  const total = db.prepare('SELECT COALESCE(SUM(qty_kg), 0) AS kg, COUNT(*) AS n FROM casing_items WHERE batch_id = ?').get(batchId);
-  if (!total.n) return;
-  upsert('casing', batchId, { quantity_kg: total.kg });
-}
 
 router.post('/batches/:id/casing', requirePermission('edit_casing'), (req, res) => {
   const id = req.params.id;
   const b = req.body;
-  upsert('casing', id, {
-    prep_date: str(b.prep_date),
-    ph: num(b.ph),
-    moisture_pct: num(b.moisture_pct),
-    pasteurized: str(b.pasteurized),
-    application_date: str(b.application_date),
-    layer_thickness_in: num(b.layer_thickness_in),
-    room_id: str(b.room_id),
-    end_date: str(b.end_date),
-    entered_by: str(b.entered_by),
-    notes: str(b.notes),
-  });
+  saveCasing(id, b);
   if (b.advance) return void (advanceStage(id, 'casing'), res.redirect(nextStagePath('casing', id)));
   res.redirect(`/batches/${id}/casing`);
 });

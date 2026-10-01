@@ -1,6 +1,20 @@
 const express = require('express');
 const db = require('../db');
 const { todayLocal } = require('../lib/dates');
+const { advanceStage } = require('../lib/stages');
+const { unclaimedDispatches } = require('../lib/handover');
+const {
+  savePrewetting,
+  savePhase1,
+  savePhase2,
+  saveSpawning,
+  saveCasing,
+  addCasingItem,
+  addRoom,
+  saveRoomOut,
+  recordDispatch,
+  recordReceipt,
+} = require('../lib/stageSaves');
 
 const router = express.Router();
 
@@ -186,6 +200,116 @@ router.post('/readings', (req, res) => {
   save();
 
   res.redirect(`/day/readings?date=${encodeURIComponent(date)}&saved=${saved}`);
+});
+
+// ---- The two batch day sheets: Form C-1 and Form G-1 as screens ----
+//
+// Each section names its own batch, picked from the batches actually at that
+// step in this workspace, and saves on its own. Nothing is typed by hand, and
+// the save goes through the same code as that batch's own stage page.
+function sectionBatches(farmId, stage) {
+  return batchesAtStage(farmId, stage);
+}
+
+function batchAt(farmId, stage, batchId) {
+  if (!batchId) return null;
+  return db
+    .prepare("SELECT * FROM batches WHERE id = ? AND farm_id = ? AND status = 'in_progress' AND current_stage = ?")
+    .get(batchId, farmId, stage);
+}
+
+function occupiedRooms(farmId) {
+  return db
+    .prepare(
+      `SELECT rooms.id, rooms.room_no, rooms.room_in_date, rooms.total_fill_weight_kg,
+              batches.id AS batch_id, batches.batch_code
+       FROM rooms
+       JOIN batches ON batches.id = rooms.batch_id
+       WHERE rooms.room_in_date IS NOT NULL AND rooms.room_out_date IS NULL AND batches.farm_id = ?
+       ORDER BY rooms.room_no`
+    )
+    .all(farmId);
+}
+
+router.get('/compost', (req, res) => {
+  const can = res.locals.can;
+  const stages = ['prewetting', 'phase1', 'phase2', 'spawning', 'dispatch'];
+  const mine = stages.filter((s) => can(`edit_${s}`));
+  if (!mine.length) return res.status(403).render('403', { permission: 'a compost stage' });
+
+  res.render('day-compost', {
+    today: todayLocal(),
+    mine,
+    batches: Object.fromEntries(stages.map((s) => [s, sectionBatches(req.farmId, s)])),
+    bunkers: db.prepare('SELECT * FROM bunkers WHERE active = 1 ORDER BY code').all(),
+    tunnels: db.prepare('SELECT * FROM tunnels WHERE active = 1 ORDER BY code').all(),
+    growingRooms: db.prepare('SELECT * FROM growing_rooms WHERE active = 1 ORDER BY code').all(),
+    canCreate: can('edit_prewetting'),
+    saved: req.query.saved || null,
+  });
+});
+
+router.get('/growing', (req, res) => {
+  const can = res.locals.can;
+  const stages = ['receipt', 'room_in', 'casing', 'room_out'];
+  const mine = stages.filter((s) => can(`edit_${s}`));
+  if (!mine.length) return res.status(403).render('403', { permission: 'a growing stage' });
+
+  const casingBatches = sectionBatches(req.farmId, 'casing');
+  res.render('day-growing', {
+    today: todayLocal(),
+    mine,
+    batches: Object.fromEntries(stages.map((s) => [s, sectionBatches(req.farmId, s)])),
+    rooms: occupiedRooms(req.farmId),
+    growingRooms: db.prepare('SELECT * FROM growing_rooms WHERE active = 1 ORDER BY code').all(),
+    casingMaterials: db
+      .prepare("SELECT * FROM raw_materials WHERE active = 1 AND category IN ('casing', 'both') ORDER BY name")
+      .all(),
+    casingItems: Object.fromEntries(
+      casingBatches.map((b) => [b.id, db.prepare('SELECT * FROM casing_items WHERE batch_id = ? ORDER BY id').all(b.id)])
+    ),
+    unclaimed: can('edit_receipt') ? unclaimedDispatches() : [],
+    canCreate: can('edit_receipt'),
+    saved: req.query.saved || null,
+  });
+});
+
+// One handler for every section of both sheets: check the permission, check the
+// batch really is at that step in this workspace, save, optionally move it on.
+const SECTIONS = {
+  prewetting: { permission: 'edit_prewetting', stage: 'prewetting', save: savePrewetting, sheet: 'compost' },
+  phase1: { permission: 'edit_phase1', stage: 'phase1', save: savePhase1, sheet: 'compost' },
+  phase2: { permission: 'edit_phase2', stage: 'phase2', save: savePhase2, sheet: 'compost' },
+  spawning: { permission: 'edit_spawning', stage: 'spawning', save: saveSpawning, sheet: 'compost' },
+  dispatch: { permission: 'edit_dispatch', stage: 'dispatch', save: recordDispatch, sheet: 'compost' },
+  receipt: { permission: 'edit_receipt', stage: 'receipt', save: recordReceipt, sheet: 'growing' },
+  room_in: { permission: 'edit_room_in', stage: 'room_in', save: addRoom, sheet: 'growing' },
+  casing: { permission: 'edit_casing', stage: 'casing', save: saveCasing, sheet: 'growing' },
+  casing_item: { permission: 'edit_casing', stage: 'casing', save: addCasingItem, sheet: 'growing' },
+};
+
+// Room Out is per room, not per batch: the room carries its own batch.
+router.post('/section/room_out', (req, res) => {
+  if (!res.locals.can('edit_room_out')) return res.status(403).render('403', { permission: 'edit_room_out' });
+  const room = occupiedRooms(req.farmId).find((r) => String(r.id) === String(req.body.room_id));
+  if (!room) return res.redirect(`/day/growing?saved=${encodeURIComponent('Pick a room first.')}`);
+  saveRoomOut(room.batch_id, room.id, req.body);
+  if (req.body.advance) advanceStage(room.batch_id, 'room_out');
+  res.redirect(`/day/growing?saved=${encodeURIComponent(room.room_no + ' closed out')}`);
+});
+
+router.post('/section/:name', (req, res) => {
+  const section = SECTIONS[req.params.name];
+  if (!section) return res.status(404).render('404');
+  if (!res.locals.can(section.permission)) return res.status(403).render('403', { permission: section.permission });
+
+  const batch = batchAt(req.farmId, section.stage, Number(req.body.batch_id));
+  const back = `/day/${section.sheet}`;
+  if (!batch) return res.redirect(`${back}?saved=${encodeURIComponent('Pick a batch first.')}`);
+
+  section.save(batch.id, req.body);
+  if (req.body.advance) advanceStage(batch.id, section.stage);
+  res.redirect(`${back}?saved=${encodeURIComponent(batch.batch_code + ' saved')}`);
 });
 
 module.exports = router;

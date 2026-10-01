@@ -70,6 +70,11 @@
       <div class="task-actions">
         <%# Day-to-day picks go through the Harvest card above; this is only for closing out the batch. %>
         <a class="btn task-action<%= t.stage.key === 'harvest' ? ' secondary' : '' %>" href="<%= t.href %>">Open <%= t.stage.label %></a>
+        <% if (t.stage.dept === 'compost' && t.stage.key !== 'harvest') { %>
+          <a class="task-secondary" href="/day/compost">Enter on the day sheet</a>
+        <% } else if (t.stage.key !== 'harvest') { %>
+          <a class="task-secondary" href="/day/growing">Enter on the day sheet</a>
+        <% } %>
       </div>
     <% } %>
   </section>
