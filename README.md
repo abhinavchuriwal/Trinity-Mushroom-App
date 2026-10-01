@@ -253,13 +253,17 @@ publish. Supervisors open the live URL in Chrome and install it:
 
 What changes on a small screen (a desktop browser looks the same as before):
 
-- **Today** (`/today`, also in the top menu) — the supervisor's home screen.
-  Lists only the batches in the current workspace that are at a stage *their
-  role* can enter, each with one button to the entry form: Phase I → log a
-  turn reading, Phase II → log a tunnel reading, one Harvest card for every
-  occupied room (with kg picked today), and every other stage → open its page.
-  In a growing unit it also lists compost the compost unit has dispatched but
-  nobody has received yet, with a button to start the growing batch for it.
+- **Today** (`/today`, also in the top menu) — the supervisor's home screen,
+  laid out as the paper day sheet is: one numbered section per step, in the
+  same order and with the same numbers (`Sheet C-1 · 3`), so a filled sheet is
+  typed in straight down the screen. Steps the person's role can't save are
+  left out; an empty step still shows, so the shape matches the paper. Each
+  section holds the batches sitting at that step, with one button to the entry
+  form: Phase I → log a turn reading, Phase II → log a tunnel reading, every
+  other step → open its page. Harvest is unnumbered because it has its own
+  sheet (G-2) and is logged per room, not per batch. Section 1 starts a new
+  batch, and in a growing unit also lists compost the compost unit has
+  dispatched but nobody has received yet.
 - **Phase I / Phase II** — on a phone the reading form comes first, then the
   reading history, then the stage summary. The form is pre-filled with
   today's date, the next turn number, the batch's bunker and the person's own

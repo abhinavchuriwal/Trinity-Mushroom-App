@@ -370,12 +370,42 @@ footer.site {
 /* ---------- Today ---------- */
 .today-head { margin-bottom: 1.1rem; }
 .today-head h1 { margin-bottom: 0.15rem; }
-.today-dept {
-  font-size: 0.78rem;
+/* Today is laid out as the paper day sheet: one numbered step per section. */
+.today-sec {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 1.5rem 0 0.6rem;
+}
+.today-sec .n {
+  flex: none;
+  width: 1.5rem;
+  height: 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--green-700);
+  color: var(--white);
+  border-radius: 5px;
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+.today-sec h2 {
+  margin: 0;
+  font-size: 1rem;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--gray-700);
-  margin: 1.4rem 0 0.6rem;
+}
+.today-sec .sheet {
+  margin-left: auto;
+  font-size: 0.72rem;
+  color: var(--gray-500);
+  white-space: nowrap;
+}
+.today-empty {
+  font-size: 0.85rem;
+  color: var(--gray-500);
+  padding: 0.1rem 0 0.2rem 2.05rem;
 }
 .task-grid {
   display: grid;

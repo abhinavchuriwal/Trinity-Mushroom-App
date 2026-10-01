@@ -1,6 +1,6 @@
 const express = require('express');
 const db = require('../db');
-const { ALL_STAGES, stageKeysFor } = require('../lib/stages');
+const { ALL_STAGES, stagesFor } = require('../lib/stages');
 const { daysBetween, todayLocal } = require('../lib/dates');
 const { unclaimedDispatches } = require('../lib/handover');
 
@@ -26,7 +26,6 @@ router.get('/', (req, res) => {
     const task = {
       batch: b,
       stage: meta,
-      stageIndex: stageKeysFor(b.batch_type).indexOf(b.current_stage),
       href: meta.path(b.id),
     };
 
@@ -76,16 +75,6 @@ router.get('/', (req, res) => {
     tasks.push(task);
   });
 
-  // Compost work before growing work, then earliest stage first, so the list
-  // reads in the same order the material moves through the farm.
-  const deptOrder = { compost: 0, growing: 1 };
-  tasks.sort(
-    (a, b) =>
-      deptOrder[a.stage.dept] - deptOrder[b.stage.dept] ||
-      a.stageIndex - b.stageIndex ||
-      a.batch.id - b.batch.id
-  );
-
   // Harvest is logged per room, not per batch — pickers work several rooms at
   // once — so it's one card for every occupied room rather than one per batch.
   let harvest = null;
@@ -123,9 +112,46 @@ router.get('/', (req, res) => {
     }
   }
 
-  const canEditAnything = Object.values(ALL_STAGES).some((s) => can(s.permission));
+  // Today is laid out as the paper day sheet is: one numbered section per step,
+  // in the same order, so a supervisor can type straight down the filled sheet.
+  // Sections the person's role can't save are left out entirely. Harvest is
+  // unnumbered because it has its own sheet (Form G-2), which keeps the numbers
+  // on screen matching the numbers on paper.
+  const unitType = res.locals.currentFarm.unit_type || 'full';
+  const SHEET = { compost: 'C-1', growing: 'G-1' };
+  const sheet = SHEET[unitType] || null;
+  const pipeline = stagesFor(unitType);
+  const byStage = {};
+  tasks.forEach((t) => {
+    (byStage[t.stage.key] = byStage[t.stage.key] || []).push(t);
+  });
 
-  res.render('today', { tasks, harvest, arriving, today, canEditAnything });
+  const sections = [];
+  let num = 0;
+  const firstStage = pipeline[0];
+  if (can(firstStage.permission)) {
+    sections.push({
+      num: ++num,
+      key: 'new_batch',
+      label: unitType === 'growing' ? 'Start a Growing Batch' : 'New Batch',
+      newBatch: true,
+      sheet,
+      cards: [],
+    });
+  }
+  pipeline.forEach((stage) => {
+    if (!can(stage.permission)) return;
+    const cards = byStage[stage.key] || [];
+    if (stage.key === 'harvest') {
+      sections.push({ key: 'harvest', label: 'Harvest', harvest: true, sheet: 'G-2', cards });
+    } else {
+      sections.push({ num: ++num, key: stage.key, label: stage.label, sheet, cards });
+    }
+  });
+
+  const canEditAnything = sections.length > 0;
+
+  res.render('today', { sections, harvest, arriving, today, canEditAnything });
 });
 
 module.exports = router;

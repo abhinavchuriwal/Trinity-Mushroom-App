@@ -24,10 +24,10 @@
     room_out: 'Room Out dates and closing the batch'
   };
 
-  var compostTasks = tasks.filter(function (t) { return t.stage.dept === 'compost'; });
-  var growingTasks = tasks.filter(function (t) { return t.stage.dept === 'growing'; });
-  var hasGrowing = growingTasks.length || harvest || arriving;
-  var showHeadings = compostTasks.length && hasGrowing;
+  // Nothing is waiting anywhere only if every section is empty and no compost
+  // is on its way — an empty section still prints, so the screen keeps the same
+  // shape as the paper sheet.
+  var anyWork = arriving || harvest || sections.some(function (s) { return s.cards.length; });
 %>
 
 <div class="today-head">
@@ -81,69 +81,92 @@
   <div class="card">
     <div class="empty-state">Your role can look at batches but not enter data, so nothing is waiting for you here. Use <a href="/">Dashboard</a> and <a href="/reports">Reports</a> to see the farm's records.</div>
   </div>
-<% } else if (!tasks.length && !harvest && !arriving) { %>
-  <div class="card">
-    <div class="empty-state">
-      Nothing is waiting for you in <strong><%= currentFarm.name %></strong> right now. A batch shows up here as soon as it reaches a stage your department fills in.
-      <% if (allowedFarms.length > 1) { %><br><br>Working in a different unit? Open <strong>Menu</strong> and switch the workspace.<% } %>
-    </div>
-  </div>
 <% } else { %>
-  <% if (compostTasks.length) { %>
-    <% if (showHeadings) { %><h2 class="today-dept">Compost</h2><% } %>
-    <div class="task-grid">
-      <% compostTasks.forEach(taskCard) %>
+  <% if (!anyWork) { %>
+    <div class="card">
+      <div class="empty-state">
+        Nothing is waiting for you in <strong><%= currentFarm.name %></strong> right now. A batch shows up under its step as soon as it reaches it.
+        <% if (allowedFarms.length > 1) { %><br><br>Working in a different unit? Open <strong>Menu</strong> and switch the workspace.<% } %>
+      </div>
     </div>
   <% } %>
 
-  <% if (hasGrowing) { %>
-    <% if (showHeadings) { %><h2 class="today-dept">Growing</h2><% } %>
-    <div class="task-grid">
-      <% if (arriving) { %>
-        <section class="task-card">
-          <div class="task-top">
-            <span class="task-stage">Compost on its way</span>
-            <span class="task-where"><%= arriving.deliveries.length %> deliver<%= arriving.deliveries.length === 1 ? 'y' : 'ies' %></span>
-          </div>
-          <% arriving.deliveries.forEach(function (d) { %>
-            <div class="task-facts">
-              <strong class="batch-code"><%= d.spec && d.spec.batch_code ? d.spec.batch_code : 'Compost batch' %></strong>
-              &middot; <%= Number(d.qty_kg).toLocaleString('en-IN') %> kg &middot; sent <%= shortDate(d.dispatch_date) %>
-            </div>
-          <% }) %>
-          <div class="task-actions">
-            <% if (arriving.waitingBatch) { %>
-              <div class="task-facts">When it arrives, record it on the Compost Receipt card below.</div>
-            <% } else if (can(stagesFor(currentFarm.unit_type || 'full')[0].permission)) { %>
-              <a class="btn task-action" href="/batches/new">Start a batch for this compost</a>
-              <div class="task-facts muted">Then record the weight received on its Compost Receipt page.</div>
-            <% } %>
-          </div>
-        </section>
-      <% } %>
-      <% if (harvest) { %>
-        <section class="task-card">
-          <div class="task-top">
-            <span class="task-stage">Harvest</span>
-            <span class="task-where"><%= harvest.rooms.length %> room<%= harvest.rooms.length === 1 ? '' : 's' %> in crop</span>
-          </div>
-          <div class="task-title"><%= harvest.rooms.join(', ') %></div>
-          <div class="task-facts">
-            <% if (harvest.picked.entries) { %>
-              Picked today: <strong><%= (harvest.picked.a + harvest.picked.b).toFixed(1) %> kg</strong>
-              <span class="muted">(A <%= harvest.picked.a.toFixed(1) %> &middot; B <%= harvest.picked.b.toFixed(1) %>)</span>
-            <% } else { %>
-              Nothing picked yet today
-            <% } %>
-          </div>
-          <div class="task-actions">
-            <a class="btn task-action" href="/harvest-log">Log a harvest pick</a>
-          </div>
-        </section>
-      <% } %>
-      <% growingTasks.forEach(taskCard) %>
+  <% sections.forEach(function (s) { %>
+    <div class="today-sec">
+      <% if (s.num) { %><span class="n"><%= s.num %></span><% } %>
+      <h2><%= s.label %></h2>
+      <% if (s.sheet) { %><span class="sheet">Sheet <%= s.sheet %><%= s.num ? ' · ' + s.num : '' %></span><% } %>
     </div>
-  <% } %>
+
+    <% if (s.newBatch) { %>
+      <div class="task-grid">
+        <% if (arriving) { %>
+          <section class="task-card">
+            <div class="task-top">
+              <span class="task-stage">Compost on its way</span>
+              <span class="task-where"><%= arriving.deliveries.length %> deliver<%= arriving.deliveries.length === 1 ? 'y' : 'ies' %></span>
+            </div>
+            <% arriving.deliveries.forEach(function (d) { %>
+              <div class="task-facts">
+                <strong class="batch-code"><%= d.spec && d.spec.batch_code ? d.spec.batch_code : 'Compost batch' %></strong>
+                &middot; <%= Number(d.qty_kg).toLocaleString('en-IN') %> kg &middot; sent <%= shortDate(d.dispatch_date) %>
+              </div>
+            <% }) %>
+            <div class="task-actions">
+              <% if (arriving.waitingBatch) { %>
+                <div class="task-facts">When it arrives, record it on the Compost Receipt card below.</div>
+              <% } else { %>
+                <a class="btn task-action" href="/batches/new">Start a batch for this compost</a>
+              <% } %>
+            </div>
+          </section>
+        <% } %>
+        <% if (!arriving || arriving.waitingBatch) { %>
+          <section class="task-card">
+            <div class="task-facts">
+              <% if ((currentFarm.unit_type || 'full') === 'growing') { %>
+                Start a batch for compost that has arrived.
+              <% } else { %>
+                Batch code, start date and the raw material recipe.
+              <% } %>
+            </div>
+            <div class="task-actions"><a class="btn task-action<%= arriving ? ' secondary' : '' %>" href="/batches/new">Start a new batch</a></div>
+          </section>
+        <% } %>
+      </div>
+
+    <% } else if (s.harvest) { %>
+      <div class="task-grid">
+        <% if (harvest) { %>
+          <section class="task-card">
+            <div class="task-top">
+              <span class="task-stage">Picks by room</span>
+              <span class="task-where"><%= harvest.rooms.length %> room<%= harvest.rooms.length === 1 ? '' : 's' %> in crop</span>
+            </div>
+            <div class="task-title"><%= harvest.rooms.join(', ') %></div>
+            <div class="task-facts">
+              <% if (harvest.picked.entries) { %>
+                Picked today: <strong><%= (harvest.picked.a + harvest.picked.b).toFixed(1) %> kg</strong>
+                <span class="muted">(A <%= harvest.picked.a.toFixed(1) %> &middot; B <%= harvest.picked.b.toFixed(1) %>)</span>
+              <% } else { %>
+                Nothing picked yet today
+              <% } %>
+            </div>
+            <div class="task-actions"><a class="btn task-action" href="/harvest-log">Log a harvest pick</a></div>
+          </section>
+        <% } %>
+        <% s.cards.forEach(taskCard) %>
+        <% if (!harvest && !s.cards.length) { %><div class="today-empty">No rooms in crop today.</div><% } %>
+      </div>
+
+    <% } else if (s.cards.length) { %>
+      <div class="task-grid">
+        <% s.cards.forEach(taskCard) %>
+      </div>
+    <% } else { %>
+      <div class="today-empty">Nothing at this step today.</div>
+    <% } %>
+  <% }) %>
 <% } %>
 
 <%- include('partials/footer') %>
