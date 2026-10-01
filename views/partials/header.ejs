@@ -29,13 +29,10 @@
       <nav>
         <a href="/today">Today</a>
         <a href="/">Dashboard</a>
-        <% if (can('edit_prewetting') || can('edit_phase1') || can('edit_phase2') || can('edit_spawning') || can('edit_dispatch')) { %><a href="/day/compost">Compost Day Sheet</a><% } %>
         <% if (can('edit_phase1') || can('edit_phase2')) { %><a href="/day/readings">Daily Readings</a><% } %>
-        <% if (can('edit_receipt') || can('edit_room_in') || can('edit_casing') || can('edit_room_out')) { %><a href="/day/growing">Growing Day Sheet</a><% } %>
         <% if (can('edit_harvest')) { %><a href="/harvest-log">Daily Harvest</a><% } %>
         <%# A growing unit's batches start at Receipt, so its New Batch belongs to the growing team, not compost. %>
         <% if (can(stagesFor(currentFarm.unit_type || 'full')[0].permission)) { %><a href="/batches/new">New Batch</a><% } %>
-        <% if (can('manage_raw_materials')) { %><a href="/raw-materials">Raw Materials</a><% } %>
         <a href="/reports">Reports</a>
         <a href="/settings">Settings</a>
       </nav>

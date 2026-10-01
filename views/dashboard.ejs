@@ -7,6 +7,19 @@
 </div>
 
 <%
+  // The two day sheets live here rather than in the top menu: the menu is for
+  // getting around, and these are where a day's work is entered.
+  var canCompostSheet = ['edit_prewetting', 'edit_phase1', 'edit_phase2', 'edit_spawning', 'edit_dispatch'].some(can);
+  var canGrowingSheet = ['edit_receipt', 'edit_room_in', 'edit_casing', 'edit_room_out'].some(can);
+%>
+<% if (canCompostSheet || canGrowingSheet) { %>
+  <div class="settings-nav">
+    <% if (canCompostSheet) { %><a href="/day/compost">Form C-1 · Compost Day Sheet</a><% } %>
+    <% if (canGrowingSheet) { %><a href="/day/growing">Form G-1 · Growing Day Sheet</a><% } %>
+  </div>
+<% } %>
+
+<%
   // Preserve the other filter when switching one of them.
   function q(overrides) {
     var parts = [];

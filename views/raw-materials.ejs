@@ -1,7 +1,10 @@
 <% var title = 'Raw Materials' %>
 <%- include('partials/header') %>
 
-<h1>Raw Materials Master List</h1>
+<h1>Settings</h1>
+<%- include('partials/settings-nav') %>
+
+<h2 style="margin-bottom:0.4rem">Raw Materials Master List</h2>
 <p class="muted">Fix a default cost per kg (NPR) and dry-basis Carbon % / Nitrogen % / Moisture % for each material you use. <strong>Used in</strong> decides which recipe offers it &mdash; the compost mix on New Batch, the casing mix on the Casing page, or both. Casing materials (cocopeat, ball clay, calcium carbonate) only need a cost per kg; carbon and nitrogen don't apply to them. These become the dropdown choices &amp; defaults when building a batch's raw material recipe on the New Batch page &mdash; cost, C%, N%, and moisture % can all still be overridden per batch if a specific delivery differs. Moisture matters even without a lab reading: the C:N ratio is calculated from dry matter, and different materials (fresh manure vs. air-dried straw) hold very different amounts of water. Editing or deactivating a material here never changes figures already recorded on past batches.</p>
 
 <% if (error) { %>

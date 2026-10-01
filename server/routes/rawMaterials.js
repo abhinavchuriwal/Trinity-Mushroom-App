@@ -21,7 +21,7 @@ function cat(v) {
 
 router.get('/', (req, res) => {
   const materials = db.prepare('SELECT * FROM raw_materials ORDER BY active DESC, category, name').all();
-  res.render('raw-materials', { materials, error: req.query.error || null });
+  res.render('raw-materials', { materials, settingsPage: 'raw-materials', error: req.query.error || null });
 });
 
 router.post('/', requirePermission('manage_raw_materials'), (req, res) => {
