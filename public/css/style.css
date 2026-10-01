@@ -402,6 +402,38 @@ footer.site {
   color: var(--gray-500);
   white-space: nowrap;
 }
+/* Today's four day sheets: one card per paper form. */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 0.9rem;
+  align-items: start;
+  margin-bottom: 0.4rem;
+}
+.form-card {
+  display: block;
+  background: var(--white);
+  border: 1px solid var(--gray-300);
+  border-left: 5px solid var(--green-700);
+  border-radius: 10px;
+  padding: 1rem 1.1rem;
+  color: inherit;
+}
+.form-card:hover { text-decoration: none; border-color: var(--green-600); }
+.form-card-top { display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap; }
+.form-code {
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--green-700);
+}
+.form-card-top .task-done { margin-left: auto; font-size: 0.78rem; }
+.form-name { font-size: 1.15rem; font-weight: 700; color: var(--green-900); margin: 0.1rem 0 0.25rem; }
+.form-blurb { font-size: 0.88rem; color: var(--gray-700); }
+.form-waiting { font-size: 0.85rem; color: var(--gray-700); margin-top: 0.4rem; font-variant-numeric: tabular-nums; }
+.form-open { display: inline-block; margin-top: 0.6rem; font-weight: 600; color: var(--green-700); font-size: 0.9rem; }
+
 .day-row { padding: 0.9rem 1.1rem; }
 .day-row-head {
   display: flex;

@@ -112,46 +112,109 @@ router.get('/', (req, res) => {
     }
   }
 
-  // Today is laid out as the paper day sheet is: one numbered section per step,
-  // in the same order, so a supervisor can type straight down the filled sheet.
-  // Sections the person's role can't save are left out entirely. Harvest is
-  // unnumbered because it has its own sheet (Form G-2), which keeps the numbers
-  // on screen matching the numbers on paper.
-  const unitType = res.locals.currentFarm.unit_type || 'full';
-  const SHEET = { compost: 'C-1', growing: 'G-1' };
-  const sheet = SHEET[unitType] || null;
-  const pipeline = stagesFor(unitType);
-  const byStage = {};
-  tasks.forEach((t) => {
-    (byStage[t.stage.key] = byStage[t.stage.key] || []).push(t);
-  });
+  // Today is the four day sheets, in the same shape as the paper ones. A
+  // supervisor only sees their own department's sheets: C-1 and C-2 for the
+  // compost side, G-1 and G-2 for growing. Admin and Farm Manager hold every
+  // stage permission, so they see all four.
+  const COMPOST_STAGES = ['prewetting', 'phase1', 'phase2', 'spawning', 'dispatch'];
+  const GROWING_STAGES = ['receipt', 'room_in', 'casing', 'room_out'];
+  const canAny = (stages) => stages.some((key) => can(ALL_STAGES[key].permission));
 
-  const sections = [];
-  let num = 0;
-  const firstStage = pipeline[0];
-  if (can(firstStage.permission)) {
-    sections.push({
-      num: ++num,
-      key: 'new_batch',
-      label: unitType === 'growing' ? 'Start a Growing Batch' : 'New Batch',
-      newBatch: true,
-      sheet,
-      cards: [],
+  const countAt = (stage) =>
+    db
+      .prepare("SELECT COUNT(*) AS n FROM batches WHERE farm_id = ? AND status = 'in_progress' AND current_stage = ?")
+      .get(req.farmId, stage).n;
+
+  const waitingFor = (stages) =>
+    stages
+      .filter((key) => can(ALL_STAGES[key].permission))
+      .map((key) => ({ label: ALL_STAGES[key].label, count: countAt(key) }))
+      .filter((x) => x.count);
+
+  const forms = [];
+
+  if (canAny(COMPOST_STAGES)) {
+    forms.push({
+      code: 'C-1',
+      name: 'Compost Day Sheet',
+      blurb: 'New batch, pre-wetting, Phase I, Phase II, spawning and dispatch — the once-per-batch steps.',
+      href: '/day/compost',
+      dept: 'compost',
+      waiting: waitingFor(COMPOST_STAGES),
     });
   }
-  pipeline.forEach((stage) => {
-    if (!can(stage.permission)) return;
-    const cards = byStage[stage.key] || [];
-    if (stage.key === 'harvest') {
-      sections.push({ key: 'harvest', label: 'Harvest', harvest: true, sheet: 'G-2', cards });
-    } else {
-      sections.push({ num: ++num, key: stage.key, label: stage.label, sheet, cards });
-    }
-  });
 
-  const canEditAnything = sections.length > 0;
+  if (can('edit_phase1') || can('edit_phase2')) {
+    const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+    const places = [];
+    if (can('edit_phase1')) places.push(plural(db.prepare('SELECT COUNT(*) AS n FROM bunkers WHERE active = 1').get().n, 'bunker'));
+    if (can('edit_phase2')) places.push(plural(db.prepare('SELECT COUNT(*) AS n FROM tunnels WHERE active = 1').get().n, 'tunnel'));
+    const loggedToday =
+      db
+        .prepare(
+          `SELECT COUNT(*) AS n FROM phase1_readings
+           JOIN batches ON batches.id = phase1_readings.batch_id
+           WHERE reading_date = ? AND batches.farm_id = ?`
+        )
+        .get(today, req.farmId).n +
+      db
+        .prepare(
+          `SELECT COUNT(*) AS n FROM phase2_readings
+           JOIN batches ON batches.id = phase2_readings.batch_id
+           WHERE reading_date = ? AND batches.farm_id = ?`
+        )
+        .get(today, req.farmId).n;
+    forms.push({
+      code: 'C-2',
+      name: 'Daily Bunker & Tunnel Log',
+      blurb: 'Today’s readings: compost temperature, moisture, pH and ammonia, bunker by bunker and tunnel by tunnel.',
+      href: '/day/readings',
+      dept: 'compost',
+      note: places.join(' · '),
+      done: loggedToday ? `${loggedToday} logged today` : null,
+    });
+  }
 
-  res.render('today', { sections, harvest, arriving, today, canEditAnything });
+  if (canAny(GROWING_STAGES)) {
+    const deliveries = can('edit_receipt') && res.locals.currentFarm.unit_type === 'growing' ? unclaimedDispatches().length : 0;
+    forms.push({
+      code: 'G-1',
+      name: 'Growing Day Sheet',
+      blurb: 'New batch and compost receipt, room in, casing preparation and application, room out.',
+      href: '/day/growing',
+      dept: 'growing',
+      waiting: waitingFor(GROWING_STAGES),
+      note: deliveries ? `${deliveries} compost deliver${deliveries === 1 ? 'y' : 'ies'} waiting to be received` : null,
+    });
+  }
+
+  if (can('edit_harvest')) {
+    const rooms = db
+      .prepare(
+        `SELECT COUNT(*) AS n FROM rooms
+         JOIN batches ON batches.id = rooms.batch_id
+         WHERE rooms.room_in_date IS NOT NULL AND rooms.room_out_date IS NULL AND batches.farm_id = ?`
+      )
+      .get(req.farmId).n;
+    const picked = db
+      .prepare(
+        `SELECT COALESCE(SUM(grade_a_kg), 0) + COALESCE(SUM(grade_b_kg), 0) AS kg FROM room_harvests
+         JOIN batches ON batches.id = room_harvests.batch_id
+         WHERE harvest_date = ? AND batches.farm_id = ?`
+      )
+      .get(today, req.farmId).kg;
+    forms.push({
+      code: 'G-2',
+      name: 'Daily Harvest',
+      blurb: 'Today’s picks, room by room: flush, A grade and B grade.',
+      href: '/harvest-log',
+      dept: 'growing',
+      note: rooms ? `${rooms} room${rooms === 1 ? '' : 's'} in crop` : 'No room is in crop',
+      done: picked ? `${picked.toFixed(1)} kg picked today` : null,
+    });
+  }
+
+  res.render('today', { forms, tasks, harvest, arriving, today, canEditAnything: forms.length > 0 });
 });
 
 module.exports = router;
