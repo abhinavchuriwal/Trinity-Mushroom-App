@@ -14,22 +14,27 @@ function str(v) {
   return v === undefined || v === '' ? null : v;
 }
 
+// Which recipe a material belongs to: the compost mix, the casing mix, or both.
+function cat(v) {
+  return ['compost', 'casing', 'both'].includes(v) ? v : 'compost';
+}
+
 router.get('/', (req, res) => {
-  const materials = db.prepare('SELECT * FROM raw_materials ORDER BY active DESC, name').all();
+  const materials = db.prepare('SELECT * FROM raw_materials ORDER BY active DESC, category, name').all();
   res.render('raw-materials', { materials, error: req.query.error || null });
 });
 
 router.post('/', requirePermission('manage_raw_materials'), (req, res) => {
-  const { name, default_cost_per_kg_npr, carbon_pct, nitrogen_pct, moisture_pct, ash_pct, notes } = req.body;
+  const { name, default_cost_per_kg_npr, carbon_pct, nitrogen_pct, moisture_pct, ash_pct, notes, category } = req.body;
   const cleanName = (name || '').trim();
   if (!cleanName) {
     return res.redirect(`/raw-materials?error=${encodeURIComponent('Enter a material name.')}`);
   }
   try {
     db.prepare(
-      `INSERT INTO raw_materials (name, default_cost_per_kg_npr, carbon_pct, nitrogen_pct, moisture_pct, ash_pct, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
-    ).run(cleanName, num(default_cost_per_kg_npr), num(carbon_pct), num(nitrogen_pct), num(moisture_pct), num(ash_pct), str(notes));
+      `INSERT INTO raw_materials (name, default_cost_per_kg_npr, carbon_pct, nitrogen_pct, moisture_pct, ash_pct, notes, category)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run(cleanName, num(default_cost_per_kg_npr), num(carbon_pct), num(nitrogen_pct), num(moisture_pct), num(ash_pct), str(notes), cat(category));
   } catch (e) {
     return res.redirect(`/raw-materials?error=${encodeURIComponent(`"${cleanName}" already exists.`)}`);
   }
@@ -37,10 +42,10 @@ router.post('/', requirePermission('manage_raw_materials'), (req, res) => {
 });
 
 router.post('/:id', requirePermission('manage_raw_materials'), (req, res) => {
-  const { name, default_cost_per_kg_npr, carbon_pct, nitrogen_pct, moisture_pct, ash_pct, notes, active } = req.body;
+  const { name, default_cost_per_kg_npr, carbon_pct, nitrogen_pct, moisture_pct, ash_pct, notes, active, category } = req.body;
   db.prepare(
     `UPDATE raw_materials
-     SET name = ?, default_cost_per_kg_npr = ?, carbon_pct = ?, nitrogen_pct = ?, moisture_pct = ?, ash_pct = ?, notes = ?, active = ?, updated_at = datetime('now')
+     SET name = ?, default_cost_per_kg_npr = ?, carbon_pct = ?, nitrogen_pct = ?, moisture_pct = ?, ash_pct = ?, notes = ?, category = ?, active = ?, updated_at = datetime('now')
      WHERE id = ?`
   ).run(
     (name || '').trim(),
@@ -50,6 +55,7 @@ router.post('/:id', requirePermission('manage_raw_materials'), (req, res) => {
     num(moisture_pct),
     num(ash_pct),
     str(notes),
+    cat(category),
     active ? 1 : 0,
     req.params.id
   );

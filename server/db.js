@@ -194,6 +194,21 @@ CREATE TABLE IF NOT EXISTS casing (
   updated_at TEXT DEFAULT (datetime('now'))
 );
 
+-- Line items for a batch's casing soil mix — the same shape as intake_items but
+-- without the C/N bookkeeping: casing soil is a substrate, not compost feed, so
+-- only weight and cost matter. The casing table's quantity_kg is the total of
+-- these lines once any exist.
+CREATE TABLE IF NOT EXISTS casing_items (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  batch_id INTEGER NOT NULL REFERENCES batches(id) ON DELETE CASCADE,
+  raw_material_id INTEGER REFERENCES raw_materials(id) ON DELETE SET NULL,
+  material_name TEXT NOT NULL,
+  qty_kg REAL NOT NULL,
+  cost_per_kg_npr REAL,
+  notes TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
 -- Room In: one row per growing room a batch's spawned/cased material is moved
 -- into. total_fill_weight_kg is recomputed (bags x kg_per_bag) on every save.
 -- room_out_date is set later from the Room Out page when that room is cleared.
@@ -443,6 +458,19 @@ const casingCols = db.prepare('PRAGMA table_info(casing)').all().map((c) => c.na
 if (!casingCols.includes('end_date')) {
   db.exec('ALTER TABLE casing ADD COLUMN end_date TEXT');
 }
+// Casing depth is measured in inches on the farm floor; the old centimetre
+// column stays so nothing recorded in cm is lost, and is converted across once.
+if (!casingCols.includes('layer_thickness_in')) {
+  db.exec('ALTER TABLE casing ADD COLUMN layer_thickness_in REAL');
+}
+
+// Raw materials now serve two recipes — the compost mix and the casing mix —
+// so each one says where it belongs ('compost', 'casing' or 'both'), and each
+// recipe's dropdown only offers what fits it.
+const rawMaterialCols = db.prepare('PRAGMA table_info(raw_materials)').all().map((c) => c.name);
+if (!rawMaterialCols.includes('category')) {
+  db.exec("ALTER TABLE raw_materials ADD COLUMN category TEXT NOT NULL DEFAULT 'compost'");
+}
 
 // Phase I moved from outdoor windrow piles (measured by length/width/height)
 // to indoor bunker composting. The old pile_length_m/pile_width_m/pile_height_m
@@ -570,8 +598,7 @@ const defaultParams = [
   { stage: 'spawning', param_key: 'spawn_rate_pct', label: 'Spawn rate', unit: '%', min_value: 0.5, max_value: 1.0 },
   { stage: 'casing', param_key: 'ph', label: 'Casing pH', unit: '', min_value: 7.5, max_value: 8.0 },
   { stage: 'casing', param_key: 'moisture_pct', label: 'Casing moisture', unit: '%', min_value: 60, max_value: 70 },
-  { stage: 'casing', param_key: 'layer_thickness_cm', label: 'Layer thickness', unit: 'cm', min_value: 3, max_value: 5 },
-  { stage: 'casing', param_key: 'pasteurization_temp_c', label: 'Casing pasteurization temp', unit: '°C', min_value: 60, max_value: 65 },
+  { stage: 'casing', param_key: 'layer_thickness_in', label: 'Layer thickness', unit: ' in', min_value: 1.5, max_value: 2 },
 ];
 const seedParams = db.transaction((rows) => rows.forEach((r) => insertParam.run(r)));
 seedParams(defaultParams);
@@ -593,16 +620,21 @@ db.prepare("DELETE FROM qc_parameters WHERE stage = 'intake' AND param_key = 'st
 // purpose — Nepal pricing varies by supplier/season and should be entered
 // locally, not assumed. Everything here is editable/deletable in Raw Materials.
 const insertMaterial = db.prepare(`
-  INSERT OR IGNORE INTO raw_materials (name, default_cost_per_kg_npr, carbon_pct, nitrogen_pct, moisture_pct, ash_pct, notes)
-  VALUES (@name, @default_cost_per_kg_npr, @carbon_pct, @nitrogen_pct, @moisture_pct, @ash_pct, @notes)
+  INSERT OR IGNORE INTO raw_materials (name, default_cost_per_kg_npr, carbon_pct, nitrogen_pct, moisture_pct, ash_pct, notes, category)
+  VALUES (@name, @default_cost_per_kg_npr, @carbon_pct, @nitrogen_pct, @moisture_pct, @ash_pct, @notes, @category)
 `);
 const defaultMaterials = [
-  { name: 'Paddy (Rice) Straw', default_cost_per_kg_npr: null, carbon_pct: 42, nitrogen_pct: 0.6, moisture_pct: 12, ash_pct: 16, notes: 'Typical C:N ~70:1, moisture ~12% air-dried — calibrate to local supply' },
-  { name: 'Wheat Straw', default_cost_per_kg_npr: null, carbon_pct: 46, nitrogen_pct: 0.5, moisture_pct: 12, ash_pct: 7, notes: 'Typical C:N ~90:1, moisture ~12% air-dried — calibrate to local supply' },
-  { name: 'Chicken Manure / Poultry Litter', default_cost_per_kg_npr: null, carbon_pct: 32, nitrogen_pct: 3.5, moisture_pct: 40, ash_pct: 25, notes: 'Typical C:N ~9:1. Moisture varies a lot by bird age, diet, litter type and barn conditions — always enter the actual moisture (and actual C/N if tested) for each delivery rather than relying on this default. If gypsum was mixed in at storage to bind ammonia, enter Gypsum as its own recipe line for its actual weight rather than folding it into this material’s weight — gypsum contributes no carbon or nitrogen, so lumping it in overstates this delivery’s C and N.' },
-  { name: 'Wheat Bran', default_cost_per_kg_npr: null, carbon_pct: 40, nitrogen_pct: 2.5, moisture_pct: 10, ash_pct: 6, notes: 'Typical C:N ~16:1, moisture ~10% — calibrate to local supply' },
-  { name: 'Urea', default_cost_per_kg_npr: null, carbon_pct: 0, nitrogen_pct: 46, moisture_pct: 0.5, ash_pct: 0, notes: 'Pure nitrogen source, no carbon contribution, negligible moisture' },
-  { name: 'Gypsum', default_cost_per_kg_npr: null, carbon_pct: 0, nitrogen_pct: 0, moisture_pct: 3, ash_pct: 80, notes: 'Structural/pH/ammonia-binding additive — no C or N contribution. Enter as its own recipe line with its own actual weight whenever it’s mixed into stored manure, rather than lumping its weight into the manure line.' },
+  { name: 'Paddy (Rice) Straw', default_cost_per_kg_npr: null, category: 'compost', carbon_pct: 42, nitrogen_pct: 0.6, moisture_pct: 12, ash_pct: 16, notes: 'Typical C:N ~70:1, moisture ~12% air-dried — calibrate to local supply' },
+  { name: 'Wheat Straw', default_cost_per_kg_npr: null, category: 'compost', carbon_pct: 46, nitrogen_pct: 0.5, moisture_pct: 12, ash_pct: 7, notes: 'Typical C:N ~90:1, moisture ~12% air-dried — calibrate to local supply' },
+  { name: 'Chicken Manure / Poultry Litter', default_cost_per_kg_npr: null, category: 'compost', carbon_pct: 32, nitrogen_pct: 3.5, moisture_pct: 40, ash_pct: 25, notes: 'Typical C:N ~9:1. Moisture varies a lot by bird age, diet, litter type and barn conditions — always enter the actual moisture (and actual C/N if tested) for each delivery rather than relying on this default. If gypsum was mixed in at storage to bind ammonia, enter Gypsum as its own recipe line for its actual weight rather than folding it into this material’s weight — gypsum contributes no carbon or nitrogen, so lumping it in overstates this delivery’s C and N.' },
+  { name: 'Wheat Bran', default_cost_per_kg_npr: null, category: 'compost', carbon_pct: 40, nitrogen_pct: 2.5, moisture_pct: 10, ash_pct: 6, notes: 'Typical C:N ~16:1, moisture ~10% — calibrate to local supply' },
+  { name: 'Urea', default_cost_per_kg_npr: null, category: 'compost', carbon_pct: 0, nitrogen_pct: 46, moisture_pct: 0.5, ash_pct: 0, notes: 'Pure nitrogen source, no carbon contribution, negligible moisture' },
+  { name: 'Gypsum', default_cost_per_kg_npr: null, carbon_pct: 0, nitrogen_pct: 0, moisture_pct: 3, ash_pct: 80, category: 'both', notes: 'Structural/pH/ammonia-binding additive — no C or N contribution. Enter as its own recipe line with its own actual weight whenever it’s mixed into stored manure, rather than lumping its weight into the manure line. Also used in the casing mix.' },
+  // Casing soil materials. No C/N/ash figures: casing is the substrate the
+  // mushrooms pin into, not compost feed, so only weight and cost are tracked.
+  { name: 'Cocopeat', default_cost_per_kg_npr: null, carbon_pct: null, nitrogen_pct: null, moisture_pct: null, ash_pct: null, category: 'casing', notes: 'Casing soil base — enter your landed cost per kg.' },
+  { name: 'Ball Clay', default_cost_per_kg_npr: null, carbon_pct: null, nitrogen_pct: null, moisture_pct: null, ash_pct: null, category: 'casing', notes: 'Casing soil — holds structure and water. Enter your landed cost per kg.' },
+  { name: 'Calcium Carbonate', default_cost_per_kg_npr: null, carbon_pct: null, nitrogen_pct: null, moisture_pct: null, ash_pct: null, category: 'casing', notes: 'Casing soil — raises and buffers pH. Enter your landed cost per kg.' },
 ];
 const seedMaterials = db.transaction((rows) => rows.forEach((r) => insertMaterial.run(r)));
 seedMaterials(defaultMaterials);
@@ -679,6 +711,33 @@ if (!db.prepare("SELECT value FROM settings WHERE key = 'migrated_handover_perms
     db.prepare("INSERT INTO settings (key, value) VALUES ('migrated_handover_perms', '1')").run();
   });
   migrateHandover();
+}
+
+// One-time move of the casing stage onto farm units: depth in inches instead of
+// centimetres, and no pasteurisation temperature/hold at all (Trinity Agro
+// pasteurises the casing chemically). Anything already recorded in cm is
+// converted rather than dropped, and its QC range comes across with it.
+if (!db.prepare("SELECT value FROM settings WHERE key = 'migrated_casing_inches'").get()) {
+  const migrateCasing = db.transaction(() => {
+    db.prepare(
+      'UPDATE casing SET layer_thickness_in = ROUND(layer_thickness_cm / 2.54, 2) WHERE layer_thickness_cm IS NOT NULL AND layer_thickness_in IS NULL'
+    ).run();
+    const oldDepth = db
+      .prepare("SELECT min_value, max_value FROM qc_parameters WHERE stage = 'casing' AND param_key = 'layer_thickness_cm'")
+      .get();
+    if (oldDepth) {
+      const toIn = (v) => (v === null || v === undefined ? null : Math.round((v / 2.54) * 100) / 100);
+      db.prepare(
+        "UPDATE qc_parameters SET min_value = ?, max_value = ? WHERE stage = 'casing' AND param_key = 'layer_thickness_in'"
+      ).run(toIn(oldDepth.min_value), toIn(oldDepth.max_value));
+      db.prepare("DELETE FROM qc_parameters WHERE stage = 'casing' AND param_key = 'layer_thickness_cm'").run();
+    }
+    db.prepare("DELETE FROM qc_parameters WHERE stage = 'casing' AND param_key = 'pasteurization_temp_c'").run();
+    // Gypsum is used in both mixes; the other casing materials seed themselves.
+    db.prepare("UPDATE raw_materials SET category = 'both' WHERE name = 'Gypsum' AND category = 'compost'").run();
+    db.prepare("INSERT INTO settings (key, value) VALUES ('migrated_casing_inches', '1')").run();
+  });
+  migrateCasing();
 }
 
 const adminRoleRow = db.prepare('SELECT id FROM roles WHERE is_system = 1').get();

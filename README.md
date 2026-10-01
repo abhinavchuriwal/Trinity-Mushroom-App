@@ -70,8 +70,11 @@ To restore: stop the server, replace `trinity-agro.db` with a backup (deleting a
   the trailing number, which just needs to be unique within that fiscal year.
   Note: batches created before this format was added (e.g. `2026-001`) keep their
   original codes — only new batches use the new format.
-- **Raw Materials** (master list) — name, landed cost per kg (NPR), standard
-  Carbon %/Nitrogen % (dry basis), notes, active toggle. These are the dropdown
+- **Raw Materials** (master list) — name, which recipe it belongs to (compost
+  mix, casing mix, or both), landed cost per kg (NPR), standard
+  Carbon %/Nitrogen % (dry basis), notes, active toggle. Casing materials
+  (cocopeat, ball clay, calcium carbonate, gypsum) only need a cost per kg —
+  carbon and nitrogen don't apply to a substrate. These are the dropdown
   choices and defaults used when building a batch's recipe. Editing or
   deactivating a material here never changes costs/percentages already recorded
   on past batches — those are snapshotted at the time each recipe line was added.
@@ -213,8 +216,14 @@ To restore: stop the server, replace `trinity-agro.db` with a backup (deleting a
      that is when the compost is last looked at.
   5. **Room In** — one row per growing room (room no., room-in date); the
      spawned compost is filled into the rooms before casing
-  6. **Casing Soil Preparation** — material mix, chalk/lime, pH, moisture,
-     pasteurization, layer thickness; application/end date and days
+  6. **Casing** — in two parts on one page. *Soil preparation*: the casing mix
+     entered line by line from the casing materials, which adds up its own total
+     weight and cost, plus prep date and whether it was pasteurised (chemically
+     — no temperature or hold is recorded). *Application*: application and end
+     dates, pH, moisture, layer thickness **in inches**, and the room, which
+     defaults to the room this batch was filled into at Room In. Depths recorded
+     in centimetres before this change were converted across, and the QC range
+     came with them.
   7. **Harvest** — per room, a picking log (date, A grade kg, B grade kg).
      Come back to this page repeatedly as flushes happen over the cropping cycle.
   8. **Room Out** — per room: room-out date + days in room, compost fill weight,

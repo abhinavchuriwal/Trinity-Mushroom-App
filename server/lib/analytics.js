@@ -108,8 +108,7 @@ function getBatchMetrics(batchId) {
     evaluateParam('spawning', 'spawn_rate_pct', spawning.spawn_rate_pct, 'Spawn rate'),
     evaluateParam('casing', 'ph', casing.ph, 'Casing pH'),
     evaluateParam('casing', 'moisture_pct', casing.moisture_pct, 'Casing moisture'),
-    evaluateParam('casing', 'layer_thickness_cm', casing.layer_thickness_cm, 'Casing layer thickness'),
-    evaluateParam('casing', 'pasteurization_temp_c', casing.pasteurization_temp_c, 'Casing pasteurization temp'),
+    evaluateParam('casing', 'layer_thickness_in', casing.layer_thickness_in, 'Casing layer thickness'),
   ].filter(Boolean);
 
   const flags = qcComparison.filter((f) => f.status === 'low' || f.status === 'high');

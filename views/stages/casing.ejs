@@ -2,11 +2,91 @@
 <%- include('../partials/header') %>
 <%- include('../partials/batch-banner') %>
 
+<%
+  // The room this batch went into at Room In, offered as the default so the
+  // casing is logged against the same room without anyone looking it up.
+  var roomDefault = row.room_id || (batchRooms.length === 1 ? batchRooms[0] : null);
+%>
+
 <section class="card">
   <h2>Casing Soil Preparation</h2>
-  <div class="qc-legend">Target casing pH: <%= qcParam('casing','ph')?.min_value %>&ndash;<%= qcParam('casing','ph')?.max_value %> · moisture <%= qcParam('casing','moisture_pct')?.min_value %>&ndash;<%= qcParam('casing','moisture_pct')?.max_value %>% · layer thickness <%= qcParam('casing','layer_thickness_cm')?.min_value %>&ndash;<%= qcParam('casing','layer_thickness_cm')?.max_value %>cm · pasteurization temp <%= qcParam('casing','pasteurization_temp_c')?.min_value %>&ndash;<%= qcParam('casing','pasteurization_temp_c')?.max_value %>°C</div>
-  <form class="grid" method="post" action="/batches/<%= batch.id %>/casing">
+  <p class="muted">The casing mix, by weight. Total quantity is added up from these lines &mdash; there is nothing to type separately.</p>
+
+  <% if (items.length) { %>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Material</th><th>Qty (kg)</th><th>Cost (NPR/kg)</th><th>Amount (NPR)</th><th>Notes</th><th></th></tr></thead>
+        <tbody>
+          <% items.forEach(function(it) { %>
+            <tr>
+              <td><%= it.material_name %></td>
+              <td><%= it.qty_kg %></td>
+              <td><%= it.cost_per_kg_npr !== null ? it.cost_per_kg_npr : '—' %></td>
+              <td><%= it.cost_per_kg_npr !== null ? npr(it.qty_kg * it.cost_per_kg_npr) : '—' %></td>
+              <td><%= v(it.notes) %></td>
+              <td>
+                <% if (can('edit_casing')) { %>
+                  <form method="post" action="/batches/<%= batch.id %>/casing/items/<%= it.id %>/delete" data-confirm="Remove <%= it.material_name %> from the casing mix?">
+                    <button class="btn small danger" type="submit">Del</button>
+                  </form>
+                <% } %>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+    <div class="qc-legend" style="margin-top:0.6rem">
+      Casing mix: <strong><%= totals.qtyKg.toLocaleString('en-IN') %> kg</strong>
+      &nbsp;·&nbsp; Cost: <strong><%= npr(totals.costNpr) %></strong>
+      <% if (totals.qtyKg) { %><span class="muted">(<%= npr(totals.costNpr / totals.qtyKg) %>/kg)</span><% } %>
+    </div>
+  <% } else { %>
+    <div class="empty-state">No casing materials added yet. Cocopeat, ball clay, gypsum and calcium carbonate come from the Raw Materials list &mdash; set their cost per kg there.</div>
+  <% } %>
+
+  <% if (can('edit_casing')) { %>
+    <h3 style="margin-top:1.25rem">Add a Material</h3>
+    <form class="grid" method="post" action="/batches/<%= batch.id %>/casing/items">
+      <div class="field">
+        <label>Material</label>
+        <select name="raw_material_id" id="casing-material">
+          <option value="">— Select —</option>
+          <% casingMaterials.forEach(function(m) { %>
+            <option value="<%= m.id %>" data-cost="<%= m.default_cost_per_kg_npr !== null ? m.default_cost_per_kg_npr : '' %>"><%= m.name %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div class="field"><label>Qty (kg)</label><input type="number" step="any" name="qty_kg" inputmode="decimal" required /></div>
+      <div class="field">
+        <label>Cost (NPR/kg)</label>
+        <input type="number" step="any" name="cost_per_kg_npr" id="casing-cost" inputmode="decimal" placeholder="from Raw Materials" />
+      </div>
+      <div class="field wide"><label>Notes</label><input type="text" name="notes" /></div>
+      <div class="form-actions"><button class="btn" type="submit">Add to Mix</button></div>
+    </form>
+  <% } %>
+
+  <form class="grid" method="post" action="/batches/<%= batch.id %>/casing" style="margin-top:1.25rem">
     <div class="field"><label>Prep Date</label><input type="date" name="prep_date" value="<%= v(row.prep_date) %>" /></div>
+    <div class="field">
+      <label>Pasteurized?</label>
+      <select name="pasteurized">
+        <option value="" <%= !row.pasteurized ? 'selected' : '' %>>—</option>
+        <option value="yes" <%= row.pasteurized === 'yes' ? 'selected' : '' %>>Yes</option>
+        <option value="no" <%= row.pasteurized === 'no' ? 'selected' : '' %>>No</option>
+      </select>
+      <span class="muted" style="font-size:0.78rem">Chemical &mdash; no temperature or hold to record</span>
+    </div>
+
+    <div class="field wide">
+      <h3 style="margin:0.6rem 0 0">Casing Application</h3>
+      <div class="qc-legend">
+        Target pH <%= qcParam('casing','ph')?.min_value %>&ndash;<%= qcParam('casing','ph')?.max_value %>
+        · moisture <%= qcParam('casing','moisture_pct')?.min_value %>&ndash;<%= qcParam('casing','moisture_pct')?.max_value %>%
+        · layer thickness <%= qcParam('casing','layer_thickness_in')?.min_value %>&ndash;<%= qcParam('casing','layer_thickness_in')?.max_value %> in
+      </div>
+    </div>
     <div class="field">
       <label>Application Date (In)</label>
       <input type="date" name="application_date" value="<%= v(row.application_date) %>" />
@@ -19,39 +99,30 @@
       <label>Days</label>
       <input type="text" value="<%= daysLabel(days) %>" disabled />
     </div>
-    <div class="field wide"><label>Casing Material</label><input type="text" name="casing_material" value="<%= v(row.casing_material) %>" placeholder="e.g. peat + chalk 3:1, or cocopeat + FYM + sand" /></div>
-    <div class="field"><label>Quantity (kg)</label><input type="number" step="any" name="quantity_kg" value="<%= v(row.quantity_kg) %>" /></div>
-    <div class="field"><label>Chalk / Lime (kg)</label><input type="number" step="any" name="chalk_kg" value="<%= v(row.chalk_kg) %>" /></div>
+    <div class="field">
+      <label>Room</label>
+      <select name="room_id"><%- optionsFor(growingRooms, roomDefault) %></select>
+      <% if (batchRooms.length) { %>
+        <span class="muted" style="font-size:0.78rem">From Room In: <%= batchRooms.join(', ') %></span>
+      <% } else { %>
+        <span class="muted" style="font-size:0.78rem">No room logged at Room In yet</span>
+      <% } %>
+    </div>
     <div class="field">
       <label>pH</label>
-      <input type="number" step="any" name="ph" value="<%= v(row.ph) %>" />
+      <input type="number" step="any" name="ph" value="<%= v(row.ph) %>" inputmode="decimal" />
       <%- qcCell('casing','ph', row.ph) %>
     </div>
     <div class="field">
       <label>Moisture (%)</label>
-      <input type="number" step="any" name="moisture_pct" value="<%= v(row.moisture_pct) %>" />
+      <input type="number" step="any" name="moisture_pct" value="<%= v(row.moisture_pct) %>" inputmode="decimal" />
       <%- qcCell('casing','moisture_pct', row.moisture_pct) %>
     </div>
     <div class="field">
-      <label>Pasteurized?</label>
-      <select name="pasteurized">
-        <option value="" <%= !row.pasteurized ? 'selected' : '' %>>—</option>
-        <option value="yes" <%= row.pasteurized === 'yes' ? 'selected' : '' %>>Yes</option>
-        <option value="no" <%= row.pasteurized === 'no' ? 'selected' : '' %>>No</option>
-      </select>
+      <label>Layer Thickness (inches)</label>
+      <input type="number" step="any" name="layer_thickness_in" value="<%= v(row.layer_thickness_in) %>" inputmode="decimal" />
+      <%- qcCell('casing','layer_thickness_in', row.layer_thickness_in) %>
     </div>
-    <div class="field">
-      <label>Pasteurization Temp (°C)</label>
-      <input type="number" step="any" name="pasteurization_temp_c" value="<%= v(row.pasteurization_temp_c) %>" />
-      <%- qcCell('casing','pasteurization_temp_c', row.pasteurization_temp_c) %>
-    </div>
-    <div class="field"><label>Pasteurization Duration (hrs)</label><input type="number" step="any" name="pasteurization_duration_hrs" value="<%= v(row.pasteurization_duration_hrs) %>" /></div>
-    <div class="field">
-      <label>Layer Thickness (cm)</label>
-      <input type="number" step="any" name="layer_thickness_cm" value="<%= v(row.layer_thickness_cm) %>" />
-      <%- qcCell('casing','layer_thickness_cm', row.layer_thickness_cm) %>
-    </div>
-    <div class="field"><label>Room</label><select name="room_id"><%- optionsFor(growingRooms, row.room_id) %></select></div>
     <div class="field"><label>Entered By</label><input type="text" name="entered_by" value="<%= v(row.entered_by) %>" /></div>
     <div class="field wide"><label>Notes</label><textarea name="notes"><%= v(row.notes) %></textarea></div>
     <div class="form-actions">
@@ -59,6 +130,29 @@
       <label class="muted"><input type="checkbox" name="advance" value="1" style="width:auto" /> Mark casing complete &amp; move to <%= nextStageLabel(batch, 'casing') %></label>
     </div>
   </form>
+
+  <% if (row.casing_material || row.chalk_kg !== null && row.chalk_kg !== undefined || row.layer_thickness_cm !== null && row.layer_thickness_cm !== undefined) { %>
+    <div class="qc-legend" style="margin-top:1rem">
+      <strong>Recorded before the casing mix was itemised:</strong>
+      <%= v(row.casing_material) ? 'mix &ldquo;' + row.casing_material + '&rdquo;' : '' %>
+      <%= row.chalk_kg !== null && row.chalk_kg !== undefined ? ' · chalk/lime ' + row.chalk_kg + ' kg' : '' %>
+      <%= row.layer_thickness_cm !== null && row.layer_thickness_cm !== undefined ? ' · layer ' + row.layer_thickness_cm + ' cm (converted to inches above)' : '' %>
+    </div>
+  <% } %>
 </section>
+
+<script>
+  // Pre-fill the cost from the material's standard, still editable per batch.
+  (function () {
+    var sel = document.getElementById('casing-material');
+    var cost = document.getElementById('casing-cost');
+    if (!sel || !cost) return;
+    sel.addEventListener('change', function () {
+      var opt = sel.options[sel.selectedIndex];
+      var std = opt && opt.getAttribute('data-cost');
+      if (std) cost.value = std;
+    });
+  })();
+</script>
 
 <%- include('../partials/footer') %>

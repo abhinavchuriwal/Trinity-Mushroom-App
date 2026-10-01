@@ -209,28 +209,90 @@ router.post('/batches/:id/spawning', requirePermission('edit_spawning'), (req, r
   res.redirect(`/batches/${id}/spawning`);
 });
 
-// ---- Casing Soil Preparation ----
+// ---- Casing: soil preparation (the mix) and application (into the room) ----
 router.get('/batches/:id/casing', (req, res) => {
-  const row = db.prepare('SELECT * FROM casing WHERE batch_id = ?').get(req.params.id) || {};
+  const id = req.params.id;
+  const row = db.prepare('SELECT * FROM casing WHERE batch_id = ?').get(id) || {};
+  const items = db.prepare('SELECT * FROM casing_items WHERE batch_id = ? ORDER BY id').all(id);
+  const casingMaterials = db
+    .prepare("SELECT * FROM raw_materials WHERE active = 1 AND category IN ('casing', 'both') ORDER BY name")
+    .all();
   const growingRooms = db.prepare('SELECT * FROM growing_rooms WHERE active = 1 ORDER BY code').all();
-  render(res, 'stages/casing', req.params.id, { row, growingRooms, days: daysBetween(row.application_date, row.end_date) }, req.farmId);
+  // The room is the one this batch was filled into at Room In — offered as the
+  // default so nobody has to remember it, but still changeable.
+  const batchRooms = db.prepare('SELECT room_no FROM rooms WHERE batch_id = ? ORDER BY room_in_date, id').all(id);
+  const totals = items.reduce(
+    (acc, it) => ({
+      qtyKg: acc.qtyKg + (it.qty_kg || 0),
+      costNpr: acc.costNpr + (it.qty_kg || 0) * (it.cost_per_kg_npr || 0),
+    }),
+    { qtyKg: 0, costNpr: 0 }
+  );
+  render(
+    res,
+    'stages/casing',
+    id,
+    {
+      row,
+      items,
+      totals,
+      casingMaterials,
+      growingRooms,
+      batchRooms: batchRooms.map((r) => r.room_no),
+      days: daysBetween(row.application_date, row.end_date),
+    },
+    req.farmId
+  );
 });
+
+// One line of the casing mix. Cost per kg defaults to the material's standard
+// cost but is stored per line, so changing the master later never rewrites what
+// a past batch actually paid.
+router.post('/batches/:id/casing/items', requirePermission('edit_casing'), (req, res) => {
+  const id = req.params.id;
+  const b = req.body;
+  const qty = num(b.qty_kg);
+  const material = b.raw_material_id ? db.prepare('SELECT * FROM raw_materials WHERE id = ?').get(b.raw_material_id) : null;
+  const name = str(b.material_name) || (material ? material.name : null);
+  if (!qty || !name) return res.redirect(`/batches/${id}/casing`);
+  db.prepare(
+    `INSERT INTO casing_items (batch_id, raw_material_id, material_name, qty_kg, cost_per_kg_npr, notes)
+     VALUES (@batch_id, @raw_material_id, @material_name, @qty_kg, @cost_per_kg_npr, @notes)`
+  ).run({
+    batch_id: id,
+    raw_material_id: material ? material.id : null,
+    material_name: name,
+    qty_kg: qty,
+    cost_per_kg_npr: num(b.cost_per_kg_npr) ?? (material ? material.default_cost_per_kg_npr : null),
+    notes: str(b.notes),
+  });
+  syncCasingQuantity(id);
+  res.redirect(`/batches/${id}/casing`);
+});
+
+router.post('/batches/:id/casing/items/:itemId/delete', requirePermission('edit_casing'), (req, res) => {
+  db.prepare('DELETE FROM casing_items WHERE id = ? AND batch_id = ?').run(req.params.itemId, req.params.id);
+  syncCasingQuantity(req.params.id);
+  res.redirect(`/batches/${req.params.id}/casing`);
+});
+
+// Total mix weight is the sum of the lines, not typed separately.
+function syncCasingQuantity(batchId) {
+  const total = db.prepare('SELECT COALESCE(SUM(qty_kg), 0) AS kg, COUNT(*) AS n FROM casing_items WHERE batch_id = ?').get(batchId);
+  if (!total.n) return;
+  upsert('casing', batchId, { quantity_kg: total.kg });
+}
 
 router.post('/batches/:id/casing', requirePermission('edit_casing'), (req, res) => {
   const id = req.params.id;
   const b = req.body;
   upsert('casing', id, {
     prep_date: str(b.prep_date),
-    casing_material: str(b.casing_material),
-    quantity_kg: num(b.quantity_kg),
-    chalk_kg: num(b.chalk_kg),
     ph: num(b.ph),
     moisture_pct: num(b.moisture_pct),
     pasteurized: str(b.pasteurized),
-    pasteurization_temp_c: num(b.pasteurization_temp_c),
-    pasteurization_duration_hrs: num(b.pasteurization_duration_hrs),
     application_date: str(b.application_date),
-    layer_thickness_cm: num(b.layer_thickness_cm),
+    layer_thickness_in: num(b.layer_thickness_in),
     room_id: str(b.room_id),
     end_date: str(b.end_date),
     entered_by: str(b.entered_by),

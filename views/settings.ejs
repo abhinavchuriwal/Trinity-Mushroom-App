@@ -4,36 +4,62 @@
 <h1>Settings</h1>
 <%- include('partials/settings-nav') %>
 
-<p class="muted">These ranges drive the OK / LOW / HIGH flags shown on batch pages. The defaults are typical starting points for button mushroom compost &mdash; calibrate them to your own SOP.</p>
+<p class="muted">These ranges drive the OK / LOW / HIGH flags shown on batch pages. The defaults are typical starting points for button mushroom compost and casing &mdash; calibrate them to your own SOP.</p>
 
-<div class="card">
-  <h2>QC Parameter Ranges</h2>
-  <div class="table-scroll">
-  <table class="settings-table">
-    <thead><tr><th>Stage</th><th>Parameter</th><th>Unit</th><th>Min &ndash; Max</th><th></th></tr></thead>
-    <tbody>
-      <% var stageLabels = { intake: 'Pre-Wetting (Recipe)', phase1: 'Phase I', phase2: 'Phase II', spawning: 'Spawning', casing: 'Casing' }; %>
-      <% params.forEach(function(p) { %>
-        <tr>
-          <td><span class="stage-pill"><%= stageLabels[p.stage] || p.stage %></span></td>
-          <td><%= p.label %></td>
-          <td><%= p.unit %></td>
-          <td class="range-inputs">
-            <% if (can('manage_qc_settings')) { %>
-              <form method="post" action="/settings/qc-parameters/<%= p.id %>" style="display:flex; gap:0.4rem">
-                <input type="number" step="any" name="min_value" value="<%= p.min_value === null ? '' : p.min_value %>" placeholder="min" />
-                <input type="number" step="any" name="max_value" value="<%= p.max_value === null ? '' : p.max_value %>" placeholder="max" />
-                <button class="btn small" type="submit">Save</button>
-              </form>
-            <% } else { %>
-              <%= p.min_value === null ? '–' : p.min_value %> &ndash; <%= p.max_value === null ? '–' : p.max_value %>
-            <% } %>
-          </td>
-        </tr>
-      <% }) %>
-    </tbody>
-  </table>
+<%
+  // One card per stage, in process order, so the casing ranges sit on their own
+  // rather than at the end of one long list of compost parameters.
+  var stageLabels = {
+    intake: 'Pre-Wetting — Recipe',
+    phase1: 'Phase I — Bunker Composting',
+    phase2: 'Phase II — Tunnel',
+    spawning: 'Spawning',
+    casing: 'Casing',
+  };
+  var stageNotes = {
+    intake: 'Calculated from the raw material recipe on dry matter.',
+    phase1: 'Taken before each turn, and the lab result at the end of Phase I.',
+    phase2: 'Conditioning readings in the tunnel; the finished-compost lab result is entered at Spawning.',
+    spawning: 'Checked on the compost as it is spawned.',
+    casing: 'The casing soil mix and the layer applied in the room.',
+  };
+  var byStage = {};
+  params.forEach(function (p) {
+    (byStage[p.stage] = byStage[p.stage] || []).push(p);
+  });
+  var stageOrder = Object.keys(stageLabels).filter(function (s) { return byStage[s]; })
+    .concat(Object.keys(byStage).filter(function (s) { return !stageLabels[s]; }));
+%>
+
+<% stageOrder.forEach(function (stage) { %>
+  <div class="card">
+    <h2><%= stageLabels[stage] || stage %></h2>
+    <% if (stageNotes[stage]) { %><p class="muted"><%= stageNotes[stage] %></p><% } %>
+    <div class="table-scroll">
+      <table class="settings-table">
+        <thead><tr><th>Parameter</th><th>Unit</th><th>Min &ndash; Max</th></tr></thead>
+        <tbody>
+          <% byStage[stage].forEach(function(p) { %>
+            <tr>
+              <td><%= p.label %></td>
+              <td><%= p.unit %></td>
+              <td class="range-inputs">
+                <% if (can('manage_qc_settings')) { %>
+                  <form method="post" action="/settings/qc-parameters/<%= p.id %>" style="display:flex; gap:0.4rem">
+                    <input type="number" step="any" name="min_value" value="<%= p.min_value === null ? '' : p.min_value %>" placeholder="min" />
+                    <input type="number" step="any" name="max_value" value="<%= p.max_value === null ? '' : p.max_value %>" placeholder="max" />
+                    <button class="btn small" type="submit">Save</button>
+                  </form>
+                <% } else { %>
+                  <%= p.min_value === null ? '–' : p.min_value %> &ndash; <%= p.max_value === null ? '–' : p.max_value %>
+                <% } %>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
   </div>
-</div>
+<% }) %>
 
 <%- include('partials/footer') %>

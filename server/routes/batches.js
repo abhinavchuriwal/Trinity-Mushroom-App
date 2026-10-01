@@ -43,6 +43,7 @@ function loadBatch(id, farmId) {
   batch.phase2_readings = db.prepare('SELECT * FROM phase2_readings WHERE batch_id = ? ORDER BY reading_date, id').all(id);
   batch.spawning = db.prepare('SELECT * FROM spawning WHERE batch_id = ?').get(id) || {};
   batch.casing = db.prepare('SELECT * FROM casing WHERE batch_id = ?').get(id) || {};
+  batch.casing_items = db.prepare('SELECT * FROM casing_items WHERE batch_id = ? ORDER BY id').all(id);
   batch.rooms = db.prepare('SELECT * FROM rooms WHERE batch_id = ? ORDER BY room_in_date, id').all(id);
   batch.harvests = db.prepare('SELECT * FROM room_harvests WHERE batch_id = ? ORDER BY harvest_date, id').all(id);
   return batch;
@@ -95,7 +96,10 @@ router.get('/batches/new', (req, res) => {
     batch_no: '',
     start_date: today,
     notes: '',
-    rawMaterials: unitType === 'growing' ? [] : db.prepare('SELECT * FROM raw_materials WHERE active = 1 ORDER BY name').all(),
+    rawMaterials:
+      unitType === 'growing'
+        ? []
+        : db.prepare("SELECT * FROM raw_materials WHERE active = 1 AND category IN ('compost', 'both') ORDER BY name").all(),
   });
 });
 
@@ -125,7 +129,10 @@ router.post('/batches', (req, res) => {
       batch_no: cleanBatchNo,
       start_date: effectiveDate,
       notes: b.notes || '',
-      rawMaterials: unitType === 'growing' ? [] : db.prepare('SELECT * FROM raw_materials WHERE active = 1 ORDER BY name').all(),
+      rawMaterials:
+      unitType === 'growing'
+        ? []
+        : db.prepare("SELECT * FROM raw_materials WHERE active = 1 AND category IN ('compost', 'both') ORDER BY name").all(),
     });
   };
 
@@ -343,6 +350,16 @@ router.get('/batches/:id/export.csv', requirePermission('export_data'), (req, re
   lines.push('');
   lines.push('-- Casing Soil Preparation --');
   pushRow(batch.casing);
+  lines.push('');
+  lines.push('-- Casing Mix --');
+  lines.push('material_name,qty_kg,cost_per_kg_npr,amount_npr,notes');
+  batch.casing_items.forEach((it) => {
+    lines.push(
+      [it.material_name, it.qty_kg, it.cost_per_kg_npr, it.cost_per_kg_npr !== null ? (it.qty_kg * it.cost_per_kg_npr).toFixed(2) : '', it.notes]
+        .map(csvVal)
+        .join(',')
+    );
+  });
   lines.push('');
   lines.push('-- Rooms (Room In / Room Out) --');
   lines.push('room_no,room_in_date,num_bags,kg_per_bag,total_fill_weight_kg,room_out_date,days_in_room,entered_by,notes');

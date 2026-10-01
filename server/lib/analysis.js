@@ -23,8 +23,7 @@ const CONTEXT_NOTES = {
   'spawning.spawn_rate_pct': 'Spawn rate affects colonization speed and how well the spawn out-competes contaminants',
   'casing.ph': 'Casing pH strongly influences pinning',
   'casing.moisture_pct': 'Casing moisture is the water reserve mushrooms draw on during flushes',
-  'casing.layer_thickness_cm': 'Casing layer thickness affects water reserve and pinning uniformity',
-  'casing.pasteurization_temp_c': 'Casing pasteurization controls competitor/pest organisms in the casing material',
+  'casing.layer_thickness_in': 'Casing layer thickness affects water reserve and pinning uniformity',
 };
 
 function fmtNum(n, digits = 1) {
