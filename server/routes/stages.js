@@ -137,11 +137,6 @@ router.post('/batches/:id/phase2', requirePermission('edit_phase2'), (req, res) 
     fill_date: str(b.fill_date),
     end_date: str(b.end_date),
     pasteurization_date: str(b.pasteurization_date),
-    pasteurization_temp_c: num(b.pasteurization_temp_c),
-    pasteurization_duration_hrs: num(b.pasteurization_duration_hrs),
-    final_cn_ratio: num(b.final_cn_ratio),
-    final_nitrogen_pct: num(b.final_nitrogen_pct),
-    final_ash_pct: num(b.final_ash_pct),
     notes: str(b.notes),
   });
   if (b.advance) return void (advanceStage(id, 'phase2'), res.redirect(nextStagePath('phase2', id)));
@@ -201,6 +196,9 @@ router.post('/batches/:id/spawning', requirePermission('edit_spawning'), (req, r
     notes: str(b.notes),
   });
   upsert('phase2', id, {
+    final_cn_ratio: num(b.final_cn_ratio),
+    final_nitrogen_pct: num(b.final_nitrogen_pct),
+    final_ash_pct: num(b.final_ash_pct),
     final_moisture_pct: num(b.final_moisture_pct),
     ammonia_cleared: str(b.ammonia_cleared),
     compost_color: str(b.compost_color),

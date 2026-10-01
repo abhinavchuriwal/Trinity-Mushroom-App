@@ -111,10 +111,17 @@ To restore: stop the server, replace `trinity-agro.db` with a backup (deleting a
     composting ran short and the compost will keep working after spawning,
     feeding weed moulds; below ~15 means over-composted and yield lost.
   
-  The Phase I and Phase II pages each have a **Lab Analysis** panel for the
-  measured C:N, nitrogen % and ash %. Results often come back after spawning,
-  so they're a quality record rather than a go/no-go gate — ammonia clearance
-  is still the real-time readiness signal.
+  The **Phase I** page has a Lab Analysis panel for the end-of-Phase-I figures;
+  the finished-compost lab result (C:N, nitrogen %, ash %) is entered on the
+  **Spawning** page, with the other finished-compost checks, because the sample
+  is taken as the compost leaves the tunnel. Results often come back after
+  spawning, so they're a quality record rather than a go/no-go gate — ammonia
+  clearance is still the real-time readiness signal.
+
+  Pasteurisation temperature and hold time are not collected: Trinity Agro
+  pasteurises chemically. Batches recorded before that change keep their
+  figures, and the spec sheet and QC comparison still show them for those
+  batches only.
 
   **Ash** is recorded per raw material (standard + per-delivery actual) and
   gives a calculated recipe ash %. Because minerals don't burn off, the rise in

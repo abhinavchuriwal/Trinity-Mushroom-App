@@ -63,7 +63,7 @@
       <% if (t.loggedToday) { %><div class="task-done">&#10003; Reading logged today</div><% } %>
       <div class="task-actions">
         <a class="btn task-action" href="<%= t.entryHref %>"><%= t.kind === 'phase1' ? 'Log turn reading' : 'Log tunnel reading' %></a>
-        <a class="task-secondary" href="<%= t.href %>"><%= t.kind === 'phase1' ? 'Dates, bunker & lab results' : 'Dates, pasteurization & lab results' %></a>
+        <a class="task-secondary" href="<%= t.href %>"><%= t.kind === 'phase1' ? 'Dates, bunker & lab results' : 'Tunnel, dates & pasteurization' %></a>
       </div>
     <% } else { %>
       <div class="task-facts"><%= stageHint[t.stage.key] || '' %></div>

@@ -49,10 +49,25 @@
     <div class="field wide">
       <h3 style="margin:0.4rem 0 0">Finished Compost &mdash; Checked at Spawning</h3>
       <div class="qc-legend">
-        The last look at the compost itself, taken as it is spawned. Ammonia clearance is the
-        go/no-go signal &mdash; compost still smelling of ammonia will hold the spawn back.
-        These go onto the spec sheet the growing unit receives with the compost.
+        The sample is taken as the compost leaves the tunnel, just before spawning. Ammonia
+        clearance is the go/no-go signal &mdash; compost still smelling of ammonia will hold the
+        spawn back. All of this goes onto the spec sheet the growing unit receives with the compost.
       </div>
+    </div>
+    <div class="field">
+      <label>Lab C:N Ratio (measured)</label>
+      <input type="number" step="any" name="final_cn_ratio" value="<%= v(finished.final_cn_ratio) %>" placeholder="e.g. 17.5" />
+      <%- qcCell('phase2','final_cn_ratio', finished.final_cn_ratio) %>
+    </div>
+    <div class="field">
+      <label>Lab Nitrogen % (dry basis)</label>
+      <input type="number" step="any" name="final_nitrogen_pct" value="<%= v(finished.final_nitrogen_pct) %>" placeholder="e.g. 2.1" />
+      <%- qcCell('phase2','final_nitrogen_pct', finished.final_nitrogen_pct) %>
+    </div>
+    <div class="field">
+      <label>Lab Ash % (dry basis)</label>
+      <input type="number" step="any" name="final_ash_pct" value="<%= v(finished.final_ash_pct) %>" />
+      <%- qcCell('phase2','final_ash_pct', finished.final_ash_pct) %>
     </div>
     <div class="field">
       <label>Final Moisture (%)</label>

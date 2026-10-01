@@ -90,8 +90,14 @@ function getBatchMetrics(batchId) {
     evaluateParam('phase1', 'end_cn_ratio', phase1.end_cn_ratio, 'C:N at end of Phase I (measured)'),
     evaluateParam('phase1', 'end_nitrogen_pct', phase1.end_nitrogen_pct, 'Nitrogen at end of Phase I (measured)'),
     evaluateParam('phase1', 'end_ash_pct', phase1.end_ash_pct, 'Ash at end of Phase I (measured)'),
-    evaluateParam('phase2', 'pasteurization_temp_c', phase2.pasteurization_temp_c, 'Pasteurization temp'),
-    evaluateParam('phase2', 'pasteurization_duration_hrs', phase2.pasteurization_duration_hrs, 'Pasteurization duration'),
+    // Heat pasteurisation only: with chemical pasteurisation nothing is recorded,
+    // so these rows are shown for batches that have them and dropped otherwise.
+    ...(phase2.pasteurization_temp_c !== null && phase2.pasteurization_temp_c !== undefined
+      ? [evaluateParam('phase2', 'pasteurization_temp_c', phase2.pasteurization_temp_c, 'Pasteurization temp')]
+      : []),
+    ...(phase2.pasteurization_duration_hrs !== null && phase2.pasteurization_duration_hrs !== undefined
+      ? [evaluateParam('phase2', 'pasteurization_duration_hrs', phase2.pasteurization_duration_hrs, 'Pasteurization duration')]
+      : []),
     evaluateParam('phase2', 'temp_c', phase2AvgTemp, 'Phase II avg conditioning temp'),
     evaluateParam('phase2', 'ammonia_ppm', phase2AvgAmmonia, 'Phase II avg ammonia'),
     evaluateParam('phase2', 'final_moisture_pct', phase2.final_moisture_pct, 'Final moisture'),

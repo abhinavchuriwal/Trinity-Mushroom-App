@@ -22,43 +22,7 @@
       <input type="text" value="<%= daysLabel(days) %>" disabled />
     </div>
     <div class="field"><label>Pasteurization Date</label><input type="date" name="pasteurization_date" value="<%= v(row.pasteurization_date) %>" /></div>
-    <div class="field">
-      <label>Pasteurization Temp (°C)</label>
-      <input type="number" step="any" name="pasteurization_temp_c" value="<%= v(row.pasteurization_temp_c) %>" />
-      <%- qcCell('phase2','pasteurization_temp_c', row.pasteurization_temp_c) %>
-    </div>
-    <div class="field">
-      <label>Pasteurization Duration (hrs)</label>
-      <input type="number" step="any" name="pasteurization_duration_hrs" value="<%= v(row.pasteurization_duration_hrs) %>" />
-      <%- qcCell('phase2','pasteurization_duration_hrs', row.pasteurization_duration_hrs) %>
-    </div>
 
-    <div class="field wide">
-      <h3 style="margin:0.4rem 0 0">Lab Analysis &mdash; Finished Compost</h3>
-      <div class="qc-legend">
-        Measured from a sample of the finished compost, not calculated. C:N should have narrowed to
-        about <strong><%= qcParam('phase2','final_cn_ratio')?.min_value %>&ndash;<%= qcParam('phase2','final_cn_ratio')?.max_value %>:1</strong>
-        as carbon burned off &mdash; well above that means composting ran short and the compost will keep
-        working after spawning, feeding weed moulds; well below means it was over-composted and yield
-        potential lost. Results often arrive after spawning, so treat this as a quality record; ammonia
-        clearance remains the go/no-go signal.
-      </div>
-    </div>
-    <div class="field">
-      <label>C:N Ratio (measured)</label>
-      <input type="number" step="any" name="final_cn_ratio" value="<%= v(row.final_cn_ratio) %>" placeholder="e.g. 17.5" />
-      <%- qcCell('phase2','final_cn_ratio', row.final_cn_ratio) %>
-    </div>
-    <div class="field">
-      <label>Nitrogen % (dry basis)</label>
-      <input type="number" step="any" name="final_nitrogen_pct" value="<%= v(row.final_nitrogen_pct) %>" placeholder="e.g. 2.1" />
-      <%- qcCell('phase2','final_nitrogen_pct', row.final_nitrogen_pct) %>
-    </div>
-    <div class="field">
-      <label>Ash % (dry basis)</label>
-      <input type="number" step="any" name="final_ash_pct" value="<%= v(row.final_ash_pct) %>" />
-      <%- qcCell('phase2','final_ash_pct', row.final_ash_pct) %>
-    </div>
     <% if (dryMatterLoss && (dryMatterLoss.phase2 !== null || dryMatterLoss.total !== null)) { %>
       <div class="field wide">
         <div class="qc-legend">
@@ -79,8 +43,9 @@
     <% } %>
     <div class="field wide">
       <div class="qc-legend">
-        Final moisture, ammonia cleared, colour, texture and smell are checked on the finished
-        compost as it is spawned &mdash; they are recorded on the <a href="/batches/<%= batch.id %>/spawning">Spawning page</a>.
+        The finished compost is sampled and checked as it leaves the tunnel, just before spawning:
+        lab C:N, nitrogen and ash, final moisture, ammonia cleared, colour, texture and smell are all
+        recorded on the <a href="/batches/<%= batch.id %>/spawning">Spawning page</a>.
       </div>
     </div>
     <div class="field wide"><label>Notes</label><textarea name="notes"><%= v(row.notes) %></textarea></div>
