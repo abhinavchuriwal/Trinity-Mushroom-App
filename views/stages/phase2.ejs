@@ -19,7 +19,7 @@
     </div>
     <div class="field">
       <label>Days</label>
-      <input type="text" value="<%= daysLabel(days) %>" disabled />
+      <input type="text" value="<%= daysText(row.fill_date, row.end_date) %>" disabled />
     </div>
     <div class="field"><label>Pasteurization Date</label><input type="date" name="pasteurization_date" value="<%= v(row.pasteurization_date) %>" /></div>
 

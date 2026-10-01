@@ -1,7 +1,7 @@
 const express = require('express');
 const db = require('../db');
 const { nepaliFiscalYear } = require('../lib/nepaliFY');
-const { daysBetween, todayLocal } = require('../lib/dates');
+const { daysBetween, todayLocal, stageDays } = require('../lib/dates');
 const { STAGE_META, ALL_STAGES, stagesFor, stageKeysFor } = require('../lib/stages');
 const { num, str, asArray } = require('../lib/batchHelpers');
 const { summarizeIntakeItems } = require('../lib/economics');
@@ -245,12 +245,12 @@ router.get('/batches/:id', (req, res) => {
     if (s.key === 'prewetting') {
       const recipe = intakeSummary.totalWetKg ? `${intakeSummary.totalWetKg} kg recipe` : null;
       summary = [recipe, batch.prewetting.in_date].filter(Boolean).join(', ') || null;
-      days = daysBetween(batch.prewetting.in_date, batch.prewetting.out_date);
+      days = stageDays(batch.prewetting.in_date, batch.prewetting.out_date);
     }
-    if (s.key === 'phase1') { summary = batch.phase1.start_date || null; days = daysBetween(batch.phase1.start_date, batch.phase1.end_date); }
-    if (s.key === 'phase2') { summary = batch.phase2.fill_date || null; days = daysBetween(batch.phase2.fill_date, batch.phase2.end_date); }
-    if (s.key === 'spawning') { summary = batch.spawning.spawning_date || null; days = daysBetween(batch.spawning.spawning_date, batch.spawning.spawn_run_end_date); }
-    if (s.key === 'casing') { summary = batch.casing.application_date || null; days = daysBetween(batch.casing.application_date, batch.casing.end_date); }
+    if (s.key === 'phase1') { summary = batch.phase1.start_date || null; days = stageDays(batch.phase1.start_date, batch.phase1.end_date); }
+    if (s.key === 'phase2') { summary = batch.phase2.fill_date || null; days = stageDays(batch.phase2.fill_date, batch.phase2.end_date); }
+    if (s.key === 'spawning') { summary = batch.spawning.spawning_date || null; days = stageDays(batch.spawning.spawning_date, batch.spawning.spawn_run_end_date); }
+    if (s.key === 'casing') { summary = batch.casing.application_date || null; days = stageDays(batch.casing.application_date, batch.casing.end_date); }
     if (s.key === 'room_in') summary = batch.rooms.length ? `${batch.rooms.length} room(s)` : null;
     if (s.key === 'harvest') summary = batch.harvests.length ? `${(totalHarvestA + totalHarvestB).toFixed(1)} kg harvested` : null;
     if (s.key === 'room_out') {

@@ -7,7 +7,7 @@ const qc = require('./lib/qc');
 const { STAGE_META, stagesFor } = require('./lib/stages');
 const { requireAuth } = require('./lib/auth');
 const SqliteSessionStore = require('./lib/sqliteSessionStore');
-const { todayLocal } = require('./lib/dates');
+const { todayLocal, stageDays } = require('./lib/dates');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -75,6 +75,13 @@ app.use((req, res, next) => {
   res.locals.qcParam = qc.getParam;
   res.locals.v = (val) => (val === null || val === undefined ? '' : val);
   res.locals.daysLabel = (days) => (days === null || days === undefined ? '—' : `${days} day${days === 1 ? '' : 's'}`);
+  // Counts a stage that is still open up to today, so "Days" is never blank
+  // while the work is actually happening.
+  res.locals.daysText = (start, end) => {
+    const { days, running } = stageDays(start, end);
+    if (days === null) return '—';
+    return running ? `Day ${days + 1} · running` : `${days} day${days === 1 ? '' : 's'}`;
+  };
   res.locals.STAGE_META = STAGE_META;
   res.locals.stagesFor = stagesFor;
   // Label of the stage after `fromKey` in this batch's own pipeline, for the
@@ -117,6 +124,7 @@ app.use('/', require('./routes/stages'));
 app.use('/', require('./routes/rooms'));
 app.use('/', require('./routes/handover'));
 app.use('/harvest-log', require('./routes/harvestLog'));
+app.use('/day', require('./routes/dayLog'));
 app.use('/settings', require('./routes/settings'));
 app.use('/raw-materials', require('./routes/rawMaterials'));
 app.use('/farm-master', require('./routes/farmMaster'));

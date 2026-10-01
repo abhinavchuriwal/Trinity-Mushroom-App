@@ -402,6 +402,17 @@ footer.site {
   color: var(--gray-500);
   white-space: nowrap;
 }
+.day-row { padding: 0.9rem 1.1rem; }
+.day-row-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.6rem;
+}
+.day-row-head h2 { margin: 0; font-size: 1.05rem; }
+.day-row-head .task-done { margin-left: auto; }
+
 .today-empty {
   font-size: 0.85rem;
   color: var(--gray-500);

@@ -56,14 +56,25 @@ To restore: stop the server, replace `trinity-agro.db` with a backup (deleting a
 ## What's in it
 
 - **Dashboard** — list of all batches, current stage, status.
-- **Log Harvest** (`/harvest-log`) — a fast, cross-batch entry point for harvest
-  picks: pick a room from a dropdown of every room currently occupied (across
-  *all* in-progress batches at once — useful when pickers are harvesting
-  several rooms/batches the same day), enter A/B grade kg, done. Writes to the
-  same data as that batch's own Harvest page; a "Today's Entries" list below
-  the form shows what's already been logged today with a delete-if-mistaken
-  option. Use a batch's own Harvest page instead when you need its per-room
-  history or are ready for Room Out.
+- **Daily Readings** (`/day/readings`) — the paper Daily Bunker & Tunnel Log
+  (Form C-2) as a screen: every bunker and tunnel in Farm Master Data, one card
+  each, with the batch that is in it already selected (matched on the bunker /
+  tunnel recorded for that batch) and only ever chosen from the batches actually
+  at that stage in this workspace. Fill the measurements, save once, and each
+  line lands on its own batch as a Phase I turn reading or a Phase II
+  conditioning reading. The date is editable, so yesterday's sheet can be typed
+  in today.
+- **Daily Harvest** (`/harvest-log`) — a fast, cross-batch entry point for harvest
+  picks — the paper Daily Harvest Sheet (Form G-2) as a screen: one card per
+  room in crop, with its batch shown and fixed by the room, so a pick can't be
+  logged against the wrong room or batch. Fill flush and A/B grade kg for the
+  rooms picked, save once. A list of everything logged on that date sits below
+  with totals and a delete-if-mistaken option. Use a batch's own Harvest page
+  when you need its per-room history or are ready for Room Out.
+- **Stage dates fill themselves** — marking a stage complete stamps its out-date
+  and the next stage's in-date with today's date (farm time), only where they
+  are still blank, and both stay editable. **Days** count up while a stage is
+  open ("Day 6 · running") instead of staying blank until it closes.
 - **New Batch** — batch code is `TAPL-NepaliFiscalYear-YourNumber`
   (e.g. `TAPL-2083/84-001`). The fiscal year (Shrawan–Ashadh) is computed
   automatically from the start date using the Bikram Sambat calendar; you choose

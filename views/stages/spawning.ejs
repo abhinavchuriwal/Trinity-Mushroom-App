@@ -16,7 +16,7 @@
     </div>
     <div class="field">
       <label>Days</label>
-      <input type="text" value="<%= daysLabel(days) %>" disabled />
+      <input type="text" value="<%= daysText(row.spawning_date, row.spawn_run_end_date) %>" disabled />
     </div>
     <div class="field"><label>Spawn Strain</label><input type="text" name="spawn_strain" value="<%= v(row.spawn_strain) %>" /></div>
     <div class="field">

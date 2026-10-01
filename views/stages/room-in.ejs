@@ -38,7 +38,7 @@
 
   <form class="grid" method="post" action="/batches/<%= batch.id %>/rooms" style="margin-top:1rem">
     <div class="field"><label>Room No</label><select name="room_no" required><%- optionsFor(growingRooms, null) %></select></div>
-    <div class="field"><label>Room In Date</label><input type="date" name="room_in_date" /></div>
+    <div class="field"><label>Room In Date</label><input type="date" name="room_in_date" value="<%= today %>" /></div>
     <div class="field"><label>Entered By</label><input type="text" name="entered_by" /></div>
     <div class="field wide"><label>Notes</label><input type="text" name="notes" /></div>
     <div class="form-actions"><button class="btn" type="submit">Add Room</button></div>

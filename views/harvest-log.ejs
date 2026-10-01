@@ -1,65 +1,84 @@
-<% var title = 'Log Harvest' %>
+<% var title = 'Daily Harvest' %>
 <%- include('partials/header') %>
 
-<h1>Log Harvest</h1>
-<p class="muted">Fast entry across every room currently occupied, no matter which batch it belongs to. For per-room history, price-free totals, or Room Out, use that batch's own Harvest page.</p>
+<div class="today-head">
+  <h1>Daily Harvest</h1>
+  <div class="muted">Form G-2 on screen &mdash; every room in crop, one line each. <%= currentFarm.name %></div>
+</div>
 
 <% if (error) { %>
   <p style="color:#c0392b; font-weight:600"><%= error %></p>
 <% } %>
+<% if (saved) { %>
+  <div class="saved-notice" style="margin-bottom:1rem">&#10003; <%= saved %> pick<%= saved === 1 ? '' : 's' %> saved.</div>
+<% } %>
 
-<div class="card">
-  <h2>Add a Pick</h2>
-  <% if (!can('edit_harvest')) { %>
-    <div class="empty-state">Your role doesn't have harvest edit access.</div>
-  <% } else if (!activeRooms.length) { %>
-    <div class="empty-state">No rooms are currently occupied (Room In without a Room Out date yet). Once a batch reaches Room In, its room shows up here.</div>
-  <% } else { %>
-    <form class="grid" method="post" action="/harvest-log" id="add-pick">
-      <% if (saved) { %>
-        <div class="field wide saved-notice">
-          &#10003; Saved: <%= saved.room_no %><%= saved.flush_number ? ' · ' + ({1:'1st',2:'2nd',3:'3rd'})[saved.flush_number] + ' flush' : '' %>
-          &middot; A <%= v(saved.grade_a_kg) || 0 %> kg &middot; B <%= v(saved.grade_b_kg) || 0 %> kg
+<% if (!can('edit_harvest')) { %>
+  <div class="card"><div class="empty-state">Your role doesn't have harvest edit access.</div></div>
+<% } else if (!activeRooms.length) { %>
+  <div class="card">
+    <div class="empty-state">No rooms are in crop (filled at Room In, not yet Room Out). A room appears here as soon as its batch reaches Room In.</div>
+  </div>
+<% } else { %>
+  <form method="post" action="/harvest-log">
+    <div class="card">
+      <div class="grid" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:0.85rem">
+        <div class="field"><label>Harvest date</label><input type="date" name="harvest_date" value="<%= date %>" /></div>
+        <div class="field"><label>Picked / weighed by</label><input type="text" name="entered_by" value="<%= currentUser.full_name || currentUser.username %>" /></div>
+        <div class="field" style="justify-content:flex-end">
+          <span class="muted">Leave a room blank if it wasn't picked. Nothing is saved for an empty line.</span>
         </div>
-      <% } %>
-      <div class="field wide">
-        <label>Room</label>
-        <select name="room_id" required>
-          <option value="">— Select —</option>
-          <% activeRooms.forEach(function(r) { %>
-            <option value="<%= r.id %>"><%= r.room_no %> — <%= r.batch_code %> (in <%= r.room_in_date %>)</option>
-          <% }) %>
-        </select>
       </div>
-      <div class="field"><label>Date</label><input type="date" name="harvest_date" value="<%= today %>" required /></div>
-      <div class="field">
-        <label>Flush</label>
-        <%# Pickers usually log several rooms in the same flush back to back, so the last flush chosen carries over. %>
-        <select name="flush_number">
-          <option value="">—</option>
-          <option value="1" <%= saved && saved.flush_number === 1 ? 'selected' : '' %>>1st Flush</option>
-          <option value="2" <%= saved && saved.flush_number === 2 ? 'selected' : '' %>>2nd Flush</option>
-          <option value="3" <%= saved && saved.flush_number === 3 ? 'selected' : '' %>>3rd Flush</option>
-        </select>
-      </div>
-      <div class="field"><label>A Grade (kg)</label><input type="number" step="any" name="grade_a_kg" inputmode="decimal" /></div>
-      <div class="field"><label>B Grade (kg)</label><input type="number" step="any" name="grade_b_kg" inputmode="decimal" /></div>
-      <div class="field"><label>Entered By</label><input type="text" name="entered_by" value="<%= currentUser.full_name || currentUser.username %>" /></div>
-      <div class="field wide"><label>Notes</label><input type="text" name="notes" /></div>
-      <div class="form-actions"><button class="btn" type="submit">Log Harvest</button></div>
-    </form>
-  <% } %>
-</div>
+    </div>
+
+    <% activeRooms.forEach(function (r) { %>
+      <section class="card day-row">
+        <input type="hidden" name="room_id" value="<%= r.id %>" />
+        <div class="day-row-head">
+          <h2><%= r.room_no %></h2>
+          <span class="task-where batch-code"><%= r.batch_code %></span>
+          <% if (loggedByRoom[r.id]) { %>
+            <%
+              var done = loggedByRoom[r.id].reduce(function (acc, e) {
+                return { a: acc.a + (e.grade_a_kg || 0), b: acc.b + (e.grade_b_kg || 0) };
+              }, { a: 0, b: 0 });
+            %>
+            <span class="task-done">&#10003; <%= (done.a + done.b).toFixed(1) %> kg logged (A <%= done.a.toFixed(1) %> &middot; B <%= done.b.toFixed(1) %>)</span>
+          <% } %>
+        </div>
+
+        <div class="grid" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:0.85rem; align-items:end">
+          <div class="field">
+            <label>Flush</label>
+            <select name="flush_number">
+              <option value="">—</option>
+              <option value="1">1st Flush</option>
+              <option value="2">2nd Flush</option>
+              <option value="3">3rd Flush</option>
+            </select>
+          </div>
+          <div class="field"><label>A grade (kg)</label><input type="number" step="any" name="grade_a_kg" inputmode="decimal" /></div>
+          <div class="field"><label>B grade (kg)</label><input type="number" step="any" name="grade_b_kg" inputmode="decimal" /></div>
+          <div class="field"><label>Notes</label><input type="text" name="notes" /></div>
+        </div>
+      </section>
+    <% }) %>
+
+    <div class="card">
+      <div class="form-actions"><button class="btn" type="submit">Save the day's picks</button></div>
+    </div>
+  </form>
+<% } %>
 
 <div class="card">
-  <h2>Today's Entries (<%= today %>)</h2>
-  <% if (!todayEntries.length) { %>
-    <div class="empty-state">Nothing logged yet today.</div>
+  <h2>Logged on <%= date %></h2>
+  <% if (!entries.length) { %>
+    <div class="empty-state">Nothing logged on this date yet.</div>
   <% } else { %>
     <table>
-      <thead><tr><th>Room</th><th>Batch</th><th>Flush</th><th>A Grade (kg)</th><th>B Grade (kg)</th><th>By</th><th>Notes</th><th></th></tr></thead>
+      <thead><tr><th>Room</th><th>Batch</th><th>Flush</th><th>A grade (kg)</th><th>B grade (kg)</th><th>By</th><th>Notes</th><th></th></tr></thead>
       <tbody>
-        <% todayEntries.forEach(function(h) { %>
+        <% entries.forEach(function(h) { %>
           <tr>
             <td><%= h.room_no %></td>
             <td><a href="/batches/<%= h.batch_id %>/harvest"><%= h.batch_code %></a></td>
@@ -71,6 +90,7 @@
             <td>
               <% if (can('edit_harvest')) { %>
                 <form method="post" action="/harvest-log/<%= h.id %>/delete" data-confirm="Delete this entry?">
+                  <input type="hidden" name="date" value="<%= date %>" />
                   <button class="btn small danger" type="submit">Del</button>
                 </form>
               <% } %>
@@ -78,6 +98,14 @@
           </tr>
         <% }) %>
       </tbody>
+      <tfoot>
+        <tr class="total">
+          <td colspan="3"><strong>Total</strong></td>
+          <td><strong><%= totals.a.toFixed(1) %></strong></td>
+          <td><strong><%= totals.b.toFixed(1) %></strong></td>
+          <td colspan="3"><strong><%= (totals.a + totals.b).toFixed(1) %> kg</strong></td>
+        </tr>
+      </tfoot>
     </table>
   <% } %>
 </div>

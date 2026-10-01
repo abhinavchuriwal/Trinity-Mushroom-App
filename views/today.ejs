@@ -62,7 +62,7 @@
       </div>
       <% if (t.loggedToday) { %><div class="task-done">&#10003; Reading logged today</div><% } %>
       <div class="task-actions">
-        <a class="btn task-action" href="<%= t.entryHref %>"><%= t.kind === 'phase1' ? 'Log turn reading' : 'Log tunnel reading' %></a>
+        <a class="btn task-action" href="/day/readings"><%= t.kind === 'phase1' ? 'Log turn reading' : 'Log tunnel reading' %></a>
         <a class="task-secondary" href="<%= t.href %>"><%= t.kind === 'phase1' ? 'Dates, bunker & lab results' : 'Tunnel, dates & pasteurization' %></a>
       </div>
     <% } else { %>
@@ -152,7 +152,7 @@
                 Nothing picked yet today
               <% } %>
             </div>
-            <div class="task-actions"><a class="btn task-action" href="/harvest-log">Log a harvest pick</a></div>
+            <div class="task-actions"><a class="btn task-action" href="/harvest-log">Log today's picks</a></div>
           </section>
         <% } %>
         <% s.cards.forEach(taskCard) %>

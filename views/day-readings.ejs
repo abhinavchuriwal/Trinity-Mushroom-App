@@ -1,0 +1,167 @@
+<% var title = 'Daily Readings' %>
+<%- include('partials/header') %>
+
+<div class="today-head">
+  <h1>Daily Readings</h1>
+  <div class="muted">Form C-2 on screen &mdash; every bunker and tunnel, one row each. <%= currentFarm.name %></div>
+</div>
+
+<% if (saved) { %>
+  <div class="saved-notice" style="margin-bottom:1rem">&#10003; <%= saved %> reading<%= saved === 1 ? '' : 's' %> saved.</div>
+<% } %>
+
+<form method="post" action="/day/readings">
+  <div class="card">
+    <div class="grid" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:0.85rem">
+      <div class="field">
+        <label>Date</label>
+        <input type="date" name="reading_date" value="<%= date %>" />
+      </div>
+      <div class="field">
+        <label>Entered by</label>
+        <input type="text" name="entered_by" value="<%= currentUser.full_name || currentUser.username %>" />
+      </div>
+      <div class="field" style="justify-content:flex-end">
+        <span class="muted">Leave a bunker or tunnel blank if it was not read. Nothing is saved for an empty row.</span>
+      </div>
+    </div>
+  </div>
+
+  <% if (bunkers.length) { %>
+    <div class="today-sec"><span class="n">1</span><h2>Bunkers &mdash; Phase I</h2><span class="sheet">Sheet C-2</span></div>
+    <div class="qc-legend" style="margin-bottom:0.6rem">
+      Reading is taken <strong>before</strong> turning. Targets: compost temp <%= qcParam('phase1','pile_temp_c')?.min_value %>&ndash;<%= qcParam('phase1','pile_temp_c')?.max_value %>&deg;C
+      &middot; moisture <%= qcParam('phase1','moisture_pct')?.min_value %>&ndash;<%= qcParam('phase1','moisture_pct')?.max_value %>%
+      &middot; pH <%= qcParam('phase1','ph')?.min_value %>&ndash;<%= qcParam('phase1','ph')?.max_value %>
+    </div>
+
+    <% bunkers.forEach(function (b) { %>
+      <section class="card day-row">
+        <input type="hidden" name="kind" value="bunker" />
+        <input type="hidden" name="location" value="<%= b.code %>" />
+        <div class="day-row-head">
+          <h2>Bunker <%= b.code %></h2>
+          <% if (b.logged.length) { %>
+            <span class="task-done">&#10003; <%= b.logged.length %> logged <%= date === today ? 'today' : 'on this date' %></span>
+          <% } %>
+        </div>
+
+        <div class="grid" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:0.85rem; align-items:end">
+          <div class="field">
+            <label>Batch</label>
+            <select name="batch_id">
+              <option value="">— Not read —</option>
+              <% phase1Batches.forEach(function (x) { %>
+                <option value="<%= x.id %>" <%= b.batchId === x.id ? 'selected' : '' %>><%= x.batch_code %></option>
+              <% }) %>
+            </select>
+          </div>
+          <div class="field"><label>Turn #</label><input type="number" name="turn_number" value="<%= b.batchId ? b.nextTurn : '' %>" inputmode="numeric" /></div>
+          <div class="field"><label>Compost temp (&deg;C)</label><input type="number" step="any" name="temp_c" inputmode="decimal" /></div>
+          <div class="field"><label>Ambient temp (&deg;C)</label><input type="number" step="any" name="ambient_temp_c" inputmode="decimal" /></div>
+          <div class="field"><label>Moisture (%)</label><input type="number" step="any" name="moisture_pct" inputmode="decimal" /></div>
+          <div class="field">
+            <label>Ammonia</label>
+            <select name="ammonia_level">
+              <option value="">—</option>
+              <option value="none">None</option>
+              <option value="mild">Mild</option>
+              <option value="strong">Strong</option>
+            </select>
+          </div>
+          <div class="field"><label>pH</label><input type="number" step="any" name="ph" inputmode="decimal" /></div>
+          <div class="field"><label>Notes</label><input type="text" name="notes" /></div>
+          <%# The tunnel rows share the field names, so every row posts the same shape. %>
+          <input type="hidden" name="ammonia_ppm" value="" />
+        </div>
+
+        <% if (b.logged.length) { %>
+          <div class="table-fit" style="margin-top:0.8rem">
+            <table>
+              <thead><tr><th>Batch</th><th>Turn</th><th>Compost temp</th><th>Moisture</th><th>pH</th><th>By</th></tr></thead>
+              <tbody>
+                <% b.logged.forEach(function (r) { %>
+                  <tr>
+                    <td class="batch-code"><%= r.batch_code %></td>
+                    <td><%= v(r.turn_number) %></td>
+                    <td><%- qcCell('phase1','pile_temp_c', r.pile_temp_c) %></td>
+                    <td><%- qcCell('phase1','moisture_pct', r.moisture_pct) %></td>
+                    <td><%- qcCell('phase1','ph', r.ph) %></td>
+                    <td><%= v(r.entered_by) %></td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        <% } %>
+      </section>
+    <% }) %>
+  <% } %>
+
+  <% if (tunnels.length) { %>
+    <div class="today-sec"><span class="n"><%= bunkers.length ? 2 : 1 %></span><h2>Tunnels &mdash; Phase II</h2><span class="sheet">Sheet C-2</span></div>
+    <div class="qc-legend" style="margin-bottom:0.6rem">
+      Targets: conditioning temp <%= qcParam('phase2','temp_c')?.min_value %>&ndash;<%= qcParam('phase2','temp_c')?.max_value %>&deg;C
+      &middot; ammonia below <%= qcParam('phase2','ammonia_ppm')?.max_value %> ppm before spawning
+    </div>
+
+    <% tunnels.forEach(function (t) { %>
+      <section class="card day-row">
+        <input type="hidden" name="kind" value="tunnel" />
+        <input type="hidden" name="location" value="<%= t.code %>" />
+        <div class="day-row-head">
+          <h2>Tunnel <%= t.code %></h2>
+          <% if (t.logged.length) { %>
+            <span class="task-done">&#10003; <%= t.logged.length %> logged <%= date === today ? 'today' : 'on this date' %></span>
+          <% } %>
+        </div>
+
+        <div class="grid" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:0.85rem; align-items:end">
+          <div class="field">
+            <label>Batch</label>
+            <select name="batch_id">
+              <option value="">— Not read —</option>
+              <% phase2Batches.forEach(function (x) { %>
+                <option value="<%= x.id %>" <%= t.batchId === x.id ? 'selected' : '' %>><%= x.batch_code %></option>
+              <% }) %>
+            </select>
+          </div>
+          <div class="field"><label>Temp (&deg;C)</label><input type="number" step="any" name="temp_c" inputmode="decimal" /></div>
+          <div class="field"><label>Ammonia (ppm)</label><input type="number" step="any" name="ammonia_ppm" inputmode="decimal" /></div>
+          <div class="field"><label>Notes</label><input type="text" name="notes" /></div>
+          <%# Unused by a tunnel row, but keeps every row posting the same fields. %>
+          <input type="hidden" name="turn_number" value="" />
+          <input type="hidden" name="ambient_temp_c" value="" />
+          <input type="hidden" name="moisture_pct" value="" />
+          <input type="hidden" name="ammonia_level" value="" />
+          <input type="hidden" name="ph" value="" />
+        </div>
+
+        <% if (t.logged.length) { %>
+          <div class="table-fit" style="margin-top:0.8rem">
+            <table>
+              <thead><tr><th>Batch</th><th>Temp</th><th>Ammonia</th><th>By</th><th>Notes</th></tr></thead>
+              <tbody>
+                <% t.logged.forEach(function (r) { %>
+                  <tr>
+                    <td class="batch-code"><%= r.batch_code %></td>
+                    <td><%- qcCell('phase2','temp_c', r.temp_c) %></td>
+                    <td><%- qcCell('phase2','ammonia_ppm', r.ammonia_ppm) %></td>
+                    <td><%= v(r.entered_by) %></td>
+                    <td><%= v(r.notes) %></td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        <% } %>
+      </section>
+    <% }) %>
+  <% } %>
+
+  <div class="card">
+    <div class="form-actions"><button class="btn" type="submit">Save the day's readings</button></div>
+  </div>
+</form>
+
+<%- include('partials/footer') %>

@@ -19,4 +19,13 @@ function todayLocal() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: FARM_TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 }
 
-module.exports = { daysBetween, todayLocal, FARM_TZ };
+// Days a stage has taken. While it's still running (no end date yet) the count
+// runs to today and is flagged, so a page can say "Day 6, running" instead of
+// showing a blank until someone closes the stage.
+function stageDays(startStr, endStr) {
+  if (!startStr) return { days: null, running: false };
+  if (endStr) return { days: daysBetween(startStr, endStr), running: false };
+  return { days: daysBetween(startStr, todayLocal()), running: true };
+}
+
+module.exports = { daysBetween, todayLocal, stageDays, FARM_TZ };

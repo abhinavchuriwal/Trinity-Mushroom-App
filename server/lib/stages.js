@@ -1,4 +1,27 @@
 const db = require('../db');
+const { todayLocal } = require('./dates');
+
+// Which date column opens and closes each stage. Moving a batch on stamps the
+// stage it leaves with an out-date and the stage it enters with an in-date,
+// both only when they are still blank — a date already typed is never touched,
+// and every one of them stays editable on its own page.
+const STAGE_DATES = {
+  prewetting: { table: 'prewetting', start: 'in_date', end: 'out_date' },
+  phase1: { table: 'phase1', start: 'start_date', end: 'end_date' },
+  phase2: { table: 'phase2', start: 'fill_date', end: 'end_date' },
+  spawning: { table: 'spawning', start: 'spawning_date', end: 'spawn_run_end_date' },
+  casing: { table: 'casing', start: 'application_date', end: 'end_date' },
+};
+
+function stampDate(batchId, stageKey, which) {
+  const meta = STAGE_DATES[stageKey];
+  if (!meta || !meta[which]) return;
+  db.prepare(`INSERT OR IGNORE INTO ${meta.table} (batch_id) VALUES (?)`).run(batchId);
+  db.prepare(`UPDATE ${meta.table} SET ${meta[which]} = ? WHERE batch_id = ? AND ${meta[which]} IS NULL`).run(
+    todayLocal(),
+    batchId
+  );
+}
 
 // Single source of truth for the batch pipelines: order, display label, and the
 // page each stage lives on. Every route file and view shares this.
@@ -78,14 +101,18 @@ function advanceStage(batchId, fromStage) {
   if (idx === -1) return;
   const batch = db.prepare('SELECT current_stage FROM batches WHERE id = ?').get(batchId);
   if (keys.indexOf(batch.current_stage) > idx) return;
+  stampDate(batchId, fromStage, 'end');
   if (idx + 1 < keys.length) {
     db.prepare('UPDATE batches SET current_stage = ? WHERE id = ?').run(keys[idx + 1], batchId);
+    stampDate(batchId, keys[idx + 1], 'start');
   } else {
     db.prepare("UPDATE batches SET current_stage = ?, status = 'completed' WHERE id = ?").run(fromStage, batchId);
   }
 }
 
 module.exports = {
+  STAGE_DATES,
+  stampDate,
   ALL_STAGES,
   PIPELINES,
   STAGE_META,

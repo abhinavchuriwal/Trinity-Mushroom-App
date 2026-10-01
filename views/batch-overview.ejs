@@ -22,7 +22,7 @@
             <% } else { %><span class="muted">Not started</span><% } %>
           </td>
           <td><%= s.summary || '—' %></td>
-          <td><%= s.days !== null ? daysLabel(s.days) : '—' %></td>
+          <td><%= s.days && s.days.days !== null ? (s.days.running ? 'Day ' + (s.days.days + 1) + ' · running' : daysLabel(s.days.days)) : '—' %></td>
           <td>
             <% if (s.flagCount > 0) { %>
               <span class="qc-cell qc-high"><%= s.flagCount %> flag<%= s.flagCount === 1 ? '' : 's' %></span>
