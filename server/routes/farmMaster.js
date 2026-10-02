@@ -52,12 +52,44 @@ function crudRoutes(table, label) {
   return sub;
 }
 
+function asArray(v) {
+  if (v === undefined) return [];
+  return Array.isArray(v) ? v : [v];
+}
+
+// One Save for every row on the page — rooms, tunnels and bunkers together.
+// Fields are named with the row's table and id (code_rooms_3, active_rooms_3),
+// so an unticked Active box can't shift another row's values.
+const MASTER_TABLES = { rooms: 'growing_rooms', tunnels: 'tunnels', bunkers: 'bunkers' };
+
+router.post('/bulk', requirePermission('manage_farm_master'), (req, res) => {
+  const b = req.body;
+  try {
+    db.transaction(() => {
+      Object.entries(MASTER_TABLES).forEach(([key, table]) => {
+        const update = db.prepare(
+          `UPDATE ${table} SET code = ?, name = ?, notes = ?, active = ?, updated_at = datetime('now') WHERE id = ?`
+        );
+        asArray(b[`id_${key}`]).forEach((id) => {
+          const f = (field) => b[`${field}_${key}_${id}`];
+          if (f('code') === undefined) return;
+          update.run((f('code') || '').trim(), str(f('name')), str(f('notes')), f('active') ? 1 : 0, id);
+        });
+      });
+    })();
+  } catch (e) {
+    return res.redirect(`/farm-master?error=${encodeURIComponent('Two entries cannot share a code.')}`);
+  }
+  res.redirect('/farm-master?saved=1');
+});
+
 router.get('/', (req, res) => {
   res.render('farm-master', {
     growingRooms: db.prepare('SELECT * FROM growing_rooms ORDER BY active DESC, code').all(),
     tunnels: db.prepare('SELECT * FROM tunnels ORDER BY active DESC, code').all(),
     bunkers: db.prepare('SELECT * FROM bunkers ORDER BY active DESC, code').all(),
     error: req.query.error || null,
+    saved: !!req.query.saved,
     settingsPage: 'farm-master',
   });
 });

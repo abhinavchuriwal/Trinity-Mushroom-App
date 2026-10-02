@@ -482,6 +482,11 @@ const rawMaterialCols = db.prepare('PRAGMA table_info(raw_materials)').all().map
 if (!rawMaterialCols.includes('category')) {
   db.exec("ALTER TABLE raw_materials ADD COLUMN category TEXT NOT NULL DEFAULT 'compost'");
 }
+// Materials the recipe uses every time: a new batch opens with a line for each
+// already filled in, so the usual mix is only a matter of typing weights.
+if (!rawMaterialCols.includes('is_default')) {
+  db.exec('ALTER TABLE raw_materials ADD COLUMN is_default INTEGER NOT NULL DEFAULT 0');
+}
 
 // Phase I moved from outdoor windrow piles (measured by length/width/height)
 // to indoor bunker composting. The old pile_length_m/pile_width_m/pile_height_m
@@ -635,12 +640,14 @@ const insertMaterial = db.prepare(`
   INSERT OR IGNORE INTO raw_materials (name, default_cost_per_kg_npr, carbon_pct, nitrogen_pct, moisture_pct, ash_pct, notes, category)
   VALUES (@name, @default_cost_per_kg_npr, @carbon_pct, @nitrogen_pct, @moisture_pct, @ash_pct, @notes, @category)
 `);
+const DEFAULT_RECIPE_MATERIALS = ['Wheat Straw', 'Chicken Manure / Poultry Litter', 'Gypsum', 'Mustard Cake', 'Urea'];
 const defaultMaterials = [
   { name: 'Paddy (Rice) Straw', default_cost_per_kg_npr: null, category: 'compost', carbon_pct: 42, nitrogen_pct: 0.6, moisture_pct: 12, ash_pct: 16, notes: 'Typical C:N ~70:1, moisture ~12% air-dried — calibrate to local supply' },
   { name: 'Wheat Straw', default_cost_per_kg_npr: null, category: 'compost', carbon_pct: 46, nitrogen_pct: 0.5, moisture_pct: 12, ash_pct: 7, notes: 'Typical C:N ~90:1, moisture ~12% air-dried — calibrate to local supply' },
   { name: 'Chicken Manure / Poultry Litter', default_cost_per_kg_npr: null, category: 'compost', carbon_pct: 32, nitrogen_pct: 3.5, moisture_pct: 40, ash_pct: 25, notes: 'Typical C:N ~9:1. Moisture varies a lot by bird age, diet, litter type and barn conditions — always enter the actual moisture (and actual C/N if tested) for each delivery rather than relying on this default. If gypsum was mixed in at storage to bind ammonia, enter Gypsum as its own recipe line for its actual weight rather than folding it into this material’s weight — gypsum contributes no carbon or nitrogen, so lumping it in overstates this delivery’s C and N.' },
   { name: 'Wheat Bran', default_cost_per_kg_npr: null, category: 'compost', carbon_pct: 40, nitrogen_pct: 2.5, moisture_pct: 10, ash_pct: 6, notes: 'Typical C:N ~16:1, moisture ~10% — calibrate to local supply' },
   { name: 'Urea', default_cost_per_kg_npr: null, category: 'compost', carbon_pct: 0, nitrogen_pct: 46, moisture_pct: 0.5, ash_pct: 0, notes: 'Pure nitrogen source, no carbon contribution, negligible moisture' },
+  { name: 'Mustard Cake', default_cost_per_kg_npr: null, category: 'compost', carbon_pct: 42, nitrogen_pct: 5, moisture_pct: 8, ash_pct: 7, notes: 'Oilseed cake, a fast nitrogen and energy source. Figures are typical — calibrate to your supply, and enter the actual moisture per delivery.' },
   { name: 'Gypsum', default_cost_per_kg_npr: null, carbon_pct: 0, nitrogen_pct: 0, moisture_pct: 3, ash_pct: 80, category: 'both', notes: 'Structural/pH/ammonia-binding additive — no C or N contribution. Enter as its own recipe line with its own actual weight whenever it’s mixed into stored manure, rather than lumping its weight into the manure line. Also used in the casing mix.' },
   // Casing soil materials. No C/N/ash figures: casing is the substrate the
   // mushrooms pin into, not compost feed, so only weight and cost are tracked.
@@ -750,6 +757,16 @@ if (!db.prepare("SELECT value FROM settings WHERE key = 'migrated_casing_inches'
     db.prepare("INSERT INTO settings (key, value) VALUES ('migrated_casing_inches', '1')").run();
   });
   migrateCasing();
+}
+
+// Mark the everyday recipe materials as the ones a new batch starts with —
+// once only, so unticking one later sticks.
+if (!db.prepare("SELECT value FROM settings WHERE key = 'seeded_default_recipe'").get()) {
+  const markDefault = db.prepare('UPDATE raw_materials SET is_default = 1 WHERE name = ?');
+  db.transaction(() => {
+    DEFAULT_RECIPE_MATERIALS.forEach((name) => markDefault.run(name));
+    db.prepare("INSERT INTO settings (key, value) VALUES ('seeded_default_recipe', '1')").run();
+  })();
 }
 
 const adminRoleRow = db.prepare('SELECT id FROM roles WHERE is_system = 1').get();

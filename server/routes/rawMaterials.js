@@ -21,7 +21,7 @@ function cat(v) {
 
 router.get('/', (req, res) => {
   const materials = db.prepare('SELECT * FROM raw_materials ORDER BY active DESC, category, name').all();
-  res.render('raw-materials', { materials, settingsPage: 'raw-materials', error: req.query.error || null });
+  res.render('raw-materials', { materials, settingsPage: 'raw-materials', saved: !!req.query.saved, error: req.query.error || null });
 });
 
 router.post('/', requirePermission('manage_raw_materials'), (req, res) => {
@@ -39,6 +39,49 @@ router.post('/', requirePermission('manage_raw_materials'), (req, res) => {
     return res.redirect(`/raw-materials?error=${encodeURIComponent(`"${cleanName}" already exists.`)}`);
   }
   res.redirect('/raw-materials');
+});
+
+function asArray(v) {
+  if (v === undefined) return [];
+  return Array.isArray(v) ? v : [v];
+}
+
+// One Save for the whole table. Each row's fields are named with its own id
+// (name_7, active_7 …) rather than as parallel arrays, so an unticked checkbox
+// — which a browser simply doesn't send — can't shift every later row's values
+// onto the wrong material.
+router.post('/bulk', requirePermission('manage_raw_materials'), (req, res) => {
+  const b = req.body;
+  const update = db.prepare(
+    `UPDATE raw_materials
+     SET name = ?, default_cost_per_kg_npr = ?, carbon_pct = ?, nitrogen_pct = ?, moisture_pct = ?, ash_pct = ?,
+         notes = ?, category = ?, active = ?, is_default = ?, updated_at = datetime('now')
+     WHERE id = ?`
+  );
+  try {
+    db.transaction(() => {
+      asArray(b.id).forEach((id) => {
+        const f = (field) => b[`${field}_${id}`];
+        if (f('name') === undefined) return;
+        update.run(
+          (f('name') || '').trim(),
+          num(f('default_cost_per_kg_npr')),
+          num(f('carbon_pct')),
+          num(f('nitrogen_pct')),
+          num(f('moisture_pct')),
+          num(f('ash_pct')),
+          str(f('notes')),
+          cat(f('category')),
+          f('active') ? 1 : 0,
+          f('is_default') ? 1 : 0,
+          id
+        );
+      });
+    })();
+  } catch (e) {
+    return res.redirect(`/raw-materials?error=${encodeURIComponent('Two materials cannot share a name.')}`);
+  }
+  res.redirect('/raw-materials?saved=1');
 });
 
 router.post('/:id', requirePermission('manage_raw_materials'), (req, res) => {

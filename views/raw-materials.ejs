@@ -37,55 +37,64 @@
 
 <div class="card">
   <h2>Materials</h2>
+  <% if (saved) { %><div class="saved-notice" style="margin-bottom:0.8rem">&#10003; Saved.</div><% } %>
   <% if (materials.length === 0) { %>
     <div class="empty-state">No raw materials yet. Add your first one above.</div>
   <% } else { %>
-    <% materials.forEach(function(m) { %>
-      <form id="mat-<%= m.id %>" method="post" action="/raw-materials/<%= m.id %>"></form>
-    <% }) %>
+    <% var ro = !can('manage_raw_materials') %>
+    <%# Delete forms live outside the table so they never nest inside the one
+        big Save form; each row's button points at its own by id. %>
+    <% if (!ro) { %>
+      <form id="mat-bulk" method="post" action="/raw-materials/bulk"></form>
+      <% materials.forEach(function(m) { %>
+        <form id="mat-del-<%= m.id %>" method="post" action="/raw-materials/<%= m.id %>/delete"
+          data-confirm="Delete <%= m.name %>? Past batches keep their recorded costs regardless."></form>
+      <% }) %>
+    <% } %>
+    <p class="muted" style="margin-top:0">Change as many rows as you like, then press <strong>Save all materials</strong> once at the bottom.</p>
     <div class="table-scroll">
     <table class="settings-table">
       <thead>
         <tr>
-          <th>Name</th><th>Used in</th><th>Landed Cost (NPR/kg)</th><th>Standard Carbon %</th><th>Standard Nitrogen %</th>
+          <th>Name</th><th>Used in</th><th>On new batches</th><th>Landed Cost (NPR/kg)</th><th>Standard Carbon %</th><th>Standard Nitrogen %</th>
           <th>C:N of Material</th><th>Standard Moisture %</th><th>Standard Ash %</th><th>Notes</th><th>Active</th>
-          <% if (can('manage_raw_materials')) { %><th>Save</th><th>Delete</th><% } %>
+          <% if (!ro) { %><th>Delete</th><% } %>
         </tr>
       </thead>
       <tbody>
         <% materials.forEach(function(m) { %>
-          <% var fid = 'mat-' + m.id %>
-          <% var ro = !can('manage_raw_materials') %>
           <tr style="<%= m.active ? '' : 'opacity:0.5' %>">
-            <td><input form="<%= fid %>" type="text" name="name" value="<%= m.name %>" style="width:11rem" required <%= ro ? 'disabled' : '' %> /></td>
             <td>
-              <select form="<%= fid %>" name="category" style="width:7rem" <%= ro ? 'disabled' : '' %>>
+              <input form="mat-bulk" type="hidden" name="id" value="<%= m.id %>" />
+              <input form="mat-bulk" type="text" name="name_<%= m.id %>" value="<%= m.name %>" style="width:11rem" required <%= ro ? 'disabled' : '' %> />
+            </td>
+            <td>
+              <select form="mat-bulk" name="category_<%= m.id %>" style="width:7rem" <%= ro ? 'disabled' : '' %>>
                 <% ['compost','casing','both'].forEach(function(c) { %>
                   <option value="<%= c %>" <%= (m.category || 'compost') === c ? 'selected' : '' %>><%= { compost: 'Compost mix', casing: 'Casing mix', both: 'Both' }[c] %></option>
                 <% }) %>
               </select>
             </td>
-            <td><input form="<%= fid %>" type="number" step="any" name="default_cost_per_kg_npr" value="<%= m.default_cost_per_kg_npr === null ? '' : m.default_cost_per_kg_npr %>" style="width:6rem" <%= ro ? 'disabled' : '' %> /></td>
-            <td><input form="<%= fid %>" type="number" step="any" name="carbon_pct" value="<%= m.carbon_pct === null ? '' : m.carbon_pct %>" style="width:5rem" <%= ro ? 'disabled' : '' %> /></td>
-            <td><input form="<%= fid %>" type="number" step="any" name="nitrogen_pct" value="<%= m.nitrogen_pct === null ? '' : m.nitrogen_pct %>" style="width:5rem" <%= ro ? 'disabled' : '' %> /></td>
+            <td><input form="mat-bulk" type="checkbox" name="is_default_<%= m.id %>" value="1" <%= m.is_default ? 'checked' : '' %> style="width:auto" <%= ro ? 'disabled' : '' %> /></td>
+            <td><input form="mat-bulk" type="number" step="any" name="default_cost_per_kg_npr_<%= m.id %>" value="<%= m.default_cost_per_kg_npr === null ? '' : m.default_cost_per_kg_npr %>" style="width:6rem" <%= ro ? 'disabled' : '' %> /></td>
+            <td><input form="mat-bulk" type="number" step="any" name="carbon_pct_<%= m.id %>" value="<%= m.carbon_pct === null ? '' : m.carbon_pct %>" style="width:5rem" <%= ro ? 'disabled' : '' %> /></td>
+            <td><input form="mat-bulk" type="number" step="any" name="nitrogen_pct_<%= m.id %>" value="<%= m.nitrogen_pct === null ? '' : m.nitrogen_pct %>" style="width:5rem" <%= ro ? 'disabled' : '' %> /></td>
             <td class="muted"><%= (m.carbon_pct && m.nitrogen_pct) ? (m.carbon_pct / m.nitrogen_pct).toFixed(1) + ':1' : '—' %></td>
-            <td><input form="<%= fid %>" type="number" step="any" name="moisture_pct" value="<%= m.moisture_pct === null ? '' : m.moisture_pct %>" style="width:5rem" <%= ro ? 'disabled' : '' %> /></td>
-            <td><input form="<%= fid %>" type="number" step="any" name="ash_pct" value="<%= m.ash_pct === null ? '' : m.ash_pct %>" style="width:5rem" <%= ro ? 'disabled' : '' %> /></td>
-            <td><input form="<%= fid %>" type="text" name="notes" value="<%= m.notes || '' %>" style="width:14rem" <%= ro ? 'disabled' : '' %> /></td>
-            <td><input form="<%= fid %>" type="checkbox" name="active" value="1" <%= m.active ? 'checked' : '' %> style="width:auto" <%= ro ? 'disabled' : '' %> /></td>
+            <td><input form="mat-bulk" type="number" step="any" name="moisture_pct_<%= m.id %>" value="<%= m.moisture_pct === null ? '' : m.moisture_pct %>" style="width:5rem" <%= ro ? 'disabled' : '' %> /></td>
+            <td><input form="mat-bulk" type="number" step="any" name="ash_pct_<%= m.id %>" value="<%= m.ash_pct === null ? '' : m.ash_pct %>" style="width:5rem" <%= ro ? 'disabled' : '' %> /></td>
+            <td><input form="mat-bulk" type="text" name="notes_<%= m.id %>" value="<%= m.notes || '' %>" style="width:14rem" <%= ro ? 'disabled' : '' %> /></td>
+            <td><input form="mat-bulk" type="checkbox" name="active_<%= m.id %>" value="1" <%= m.active ? 'checked' : '' %> style="width:auto" <%= ro ? 'disabled' : '' %> /></td>
             <% if (!ro) { %>
-              <td><button form="<%= fid %>" class="btn small" type="submit">Save</button></td>
-              <td>
-                <form method="post" action="/raw-materials/<%= m.id %>/delete" data-confirm="Delete <%= m.name %>? Past batches keep their recorded costs regardless.">
-                  <button class="btn small danger" type="submit">Del</button>
-                </form>
-              </td>
+              <td><button form="mat-del-<%= m.id %>" class="btn small danger" type="submit">Del</button></td>
             <% } %>
           </tr>
         <% }) %>
       </tbody>
     </table>
     </div>
+    <% if (!ro) { %>
+      <div class="form-actions" style="margin-top:0.9rem"><button form="mat-bulk" class="btn" type="submit">Save all materials</button></div>
+    <% } %>
   <% } %>
 </div>
 

@@ -11,9 +11,19 @@
   <p style="color:#c0392b; font-weight:600"><%= error %></p>
 <% } %>
 
+<% if (saved) { %><div class="saved-notice" style="margin-bottom:1rem">&#10003; Saved.</div><% } %>
+
+<%
+  var editable = can('manage_farm_master');
+%>
+<%# Delete forms and the single Save form sit outside the tables, so nothing
+    nests and every row's inputs can point at the one Save. %>
+<% if (editable) { %>
+  <form id="master-bulk" method="post" action="/farm-master/bulk"></form>
+<% } %>
+
 <%
   function masterCard(key, title, basePath, placeholder, rows) {
-    var editable = can('manage_farm_master');
 %>
 <div class="card">
   <h2><%= title %></h2>
@@ -30,26 +40,24 @@
     <div class="empty-state">None added yet.</div>
   <% } else { %>
     <% if (editable) { rows.forEach(function(r) { %>
-      <form id="<%= key %>-<%= r.id %>" method="post" action="<%= basePath %>/<%= r.id %>"></form>
+      <form id="<%= key %>-del-<%= r.id %>" method="post" action="<%= basePath %>/<%= r.id %>/delete"
+        data-confirm="Delete <%= r.code %>? Batches that already recorded it keep the value."></form>
     <% }) } %>
     <div class="table-scroll">
     <table class="settings-table">
-      <thead><tr><th>Code</th><th>Name / Description</th><th>Notes</th><th>Active</th><% if (editable) { %><th>Save</th><th>Delete</th><% } %></tr></thead>
+      <thead><tr><th>Code</th><th>Name / Description</th><th>Notes</th><th>Active</th><% if (editable) { %><th>Delete</th><% } %></tr></thead>
       <tbody>
         <% rows.forEach(function(r) { %>
-          <% var fid = key + '-' + r.id %>
           <tr style="<%= r.active ? '' : 'opacity:0.5' %>">
-            <td><input form="<%= fid %>" type="text" name="code" value="<%= r.code %>" style="width:6rem" required <%= editable ? '' : 'disabled' %> /></td>
-            <td><input form="<%= fid %>" type="text" name="name" value="<%= r.name || '' %>" style="width:11rem" <%= editable ? '' : 'disabled' %> /></td>
-            <td><input form="<%= fid %>" type="text" name="notes" value="<%= r.notes || '' %>" style="width:11rem" <%= editable ? '' : 'disabled' %> /></td>
-            <td><input form="<%= fid %>" type="checkbox" name="active" value="1" <%= r.active ? 'checked' : '' %> style="width:auto" <%= editable ? '' : 'disabled' %> /></td>
+            <td>
+              <input form="master-bulk" type="hidden" name="id_<%= key %>" value="<%= r.id %>" />
+              <input form="master-bulk" type="text" name="code_<%= key %>_<%= r.id %>" value="<%= r.code %>" style="width:6rem" required <%= editable ? '' : 'disabled' %> />
+            </td>
+            <td><input form="master-bulk" type="text" name="name_<%= key %>_<%= r.id %>" value="<%= r.name || '' %>" style="width:11rem" <%= editable ? '' : 'disabled' %> /></td>
+            <td><input form="master-bulk" type="text" name="notes_<%= key %>_<%= r.id %>" value="<%= r.notes || '' %>" style="width:11rem" <%= editable ? '' : 'disabled' %> /></td>
+            <td><input form="master-bulk" type="checkbox" name="active_<%= key %>_<%= r.id %>" value="1" <%= r.active ? 'checked' : '' %> style="width:auto" <%= editable ? '' : 'disabled' %> /></td>
             <% if (editable) { %>
-              <td><button form="<%= fid %>" class="btn small" type="submit">Save</button></td>
-              <td>
-                <form method="post" action="<%= basePath %>/<%= r.id %>/delete" data-confirm="Delete <%= r.code %>? Batches that already recorded it keep the value.">
-                  <button class="btn small danger" type="submit">Del</button>
-                </form>
-              </td>
+              <td><button form="<%= key %>-del-<%= r.id %>" class="btn small danger" type="submit">Del</button></td>
             <% } %>
           </tr>
         <% }) %>
@@ -60,9 +68,16 @@
 </div>
 <%
   }
-  masterCard('room', 'Growing Rooms', '/farm-master/rooms', 'e.g. GR1', growingRooms);
-  masterCard('tunnel', 'Tunnels', '/farm-master/tunnels', 'e.g. T1', tunnels);
-  masterCard('bunker', 'Bunkers', '/farm-master/bunkers', 'e.g. B1', bunkers);
+  masterCard('rooms', 'Growing Rooms', '/farm-master/rooms', 'e.g. GR1', growingRooms);
+  masterCard('tunnels', 'Tunnels', '/farm-master/tunnels', 'e.g. T1', tunnels);
+  masterCard('bunkers', 'Bunkers', '/farm-master/bunkers', 'e.g. B1', bunkers);
 %>
+
+<% if (editable) { %>
+  <div class="card">
+    <div class="form-actions"><button form="master-bulk" class="btn" type="submit">Save all farm master data</button></div>
+    <p class="muted" style="margin:0.5rem 0 0">Change rooms, tunnels and bunkers together, then save once. Adding or deleting an entry still takes effect on its own.</p>
+  </div>
+<% } %>
 
 <%- include('partials/footer') %>

@@ -84,15 +84,22 @@ To restore: stop the server, replace `trinity-agro.db` with a backup (deleting a
   and the next stage's in-date with today's date (farm time), only where they
   are still blank, and both stay editable. **Days** count up while a stage is
   open ("Day 6 · running") instead of staying blank until it closes.
-- **New Batch** — batch code is `TAPL-NepaliFiscalYear-YourNumber`
+- **New Batch** — the recipe table opens with a line for every material ticked
+  *On new batches* in Raw Materials (Wheat Straw, Chicken Manure, Gypsum,
+  Mustard Cake, Urea as shipped), each with its cost and standard percentages
+  already in place, so only the weights — and any tested moisture or C/N — need
+  typing. Any line can be changed to another material or removed, and lines
+  left without a weight are not saved. Batch code is `TAPL-NepaliFiscalYear-YourNumber`
   (e.g. `TAPL-2083-84-001`). The fiscal year (Shrawan–Ashadh) is computed
   automatically from the start date using the Bikram Sambat calendar; you choose
   the trailing number, which just needs to be unique within that fiscal year.
   Note: batches created before this format was added (e.g. `2026-001`) keep their
   original codes — only new batches use the new format.
 - **Raw Materials** (Settings → Raw Materials) — name, which recipe it belongs to (compost
-  mix, casing mix, or both), landed cost per kg (NPR), standard
-  Carbon %/Nitrogen % (dry basis), notes, active toggle. Casing materials
+  mix, casing mix, or both), **On new batches** (a new batch opens with a line
+  for each ticked material already filled in), landed cost per kg (NPR),
+  standard Carbon %/Nitrogen % (dry basis), notes, active toggle. Edit as many
+  rows as you like and press **Save all materials** once. Casing materials
   (cocopeat, ball clay, calcium carbonate, gypsum) only need a cost per kg —
   carbon and nitrogen don't apply to a substrate. These are the dropdown
   choices and defaults used when building a batch's recipe. Editing or

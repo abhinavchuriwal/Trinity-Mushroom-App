@@ -4,7 +4,10 @@
 <h1>Settings</h1>
 <%- include('partials/settings-nav') %>
 
-<p class="muted">These ranges drive the OK / LOW / HIGH flags shown on batch pages. The defaults are typical starting points for button mushroom compost and casing &mdash; calibrate them to your own SOP.</p>
+<p class="muted">These ranges drive the OK / LOW / HIGH flags shown on batch pages. The defaults are typical starting points for button mushroom compost and casing &mdash; calibrate them to your own SOP. Change as many as you like, then save once at the bottom.</p>
+
+<% if (saved) { %><div class="saved-notice" style="margin-bottom:1rem">&#10003; Saved.</div><% } %>
+<% if (can('manage_qc_settings')) { %><form id="qc-bulk" method="post" action="/settings/qc-parameters"></form><% } %>
 
 <%
   // One card per stage, in process order, so the casing ranges sit on their own
@@ -45,11 +48,9 @@
               <td><%= p.unit %></td>
               <td class="range-inputs">
                 <% if (can('manage_qc_settings')) { %>
-                  <form method="post" action="/settings/qc-parameters/<%= p.id %>" style="display:flex; gap:0.4rem">
-                    <input type="number" step="any" name="min_value" value="<%= p.min_value === null ? '' : p.min_value %>" placeholder="min" />
-                    <input type="number" step="any" name="max_value" value="<%= p.max_value === null ? '' : p.max_value %>" placeholder="max" />
-                    <button class="btn small" type="submit">Save</button>
-                  </form>
+                  <input form="qc-bulk" type="hidden" name="id" value="<%= p.id %>" />
+                  <input form="qc-bulk" type="number" step="any" name="min_<%= p.id %>" value="<%= p.min_value === null ? '' : p.min_value %>" placeholder="min" />
+                  <input form="qc-bulk" type="number" step="any" name="max_<%= p.id %>" value="<%= p.max_value === null ? '' : p.max_value %>" placeholder="max" />
                 <% } else { %>
                   <%= p.min_value === null ? '–' : p.min_value %> &ndash; <%= p.max_value === null ? '–' : p.max_value %>
                 <% } %>
@@ -61,5 +62,11 @@
     </div>
   </div>
 <% }) %>
+
+<% if (can('manage_qc_settings')) { %>
+  <div class="card">
+    <div class="form-actions"><button form="qc-bulk" class="btn" type="submit">Save all QC ranges</button></div>
+  </div>
+<% } %>
 
 <%- include('partials/footer') %>

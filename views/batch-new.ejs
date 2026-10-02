@@ -69,6 +69,7 @@
         </table>
       </div>
       <button type="button" class="btn secondary small" id="add-row-btn" style="margin-top:0.5rem">+ Add Material</button>
+      <span class="muted" style="margin-left:0.6rem; font-size:0.82rem">The usual materials are listed already &mdash; type the weights, change or remove any line, and add others as needed. Lines left without a weight aren't saved. Which materials appear here is set by the <strong>On new batches</strong> tick in Settings &rarr; Raw Materials.</span>
 
       <div class="qc-legend" style="margin-top:0.75rem">
         Total wet weight: <strong id="sum-kg">0 kg</strong>
@@ -91,7 +92,7 @@
 <p class="muted">Batch code format: <strong><%= prefix %>-Nepali Fiscal Year-Your Number</strong> (e.g. <%= prefix %>-<%= fy %>-001). The fiscal year is computed from the start date (Shrawan&ndash;Ashadh). Your batch number just needs to be unique within that fiscal year.</p>
 
 <script id="material-options" type="application/json">
-  <%- JSON.stringify(rawMaterials.map(function(m){ return {id: m.id, name: m.name, cost: m.default_cost_per_kg_npr, carbon: m.carbon_pct, nitrogen: m.nitrogen_pct, moisture: m.moisture_pct, ash: m.ash_pct}; })) %>
+  <%- JSON.stringify(rawMaterials.map(function(m){ return {id: m.id, name: m.name, cost: m.default_cost_per_kg_npr, carbon: m.carbon_pct, nitrogen: m.nitrogen_pct, moisture: m.moisture_pct, ash: m.ash_pct, isDefault: !!m.is_default}; })) %>
 </script>
 
 <script>
@@ -110,7 +111,7 @@
     return html;
   }
 
-  function addRow() {
+  function addRow(material) {
     var idx = rowCount++;
     var tr = document.createElement('tr');
     tr.innerHTML =
@@ -165,6 +166,14 @@
     tr.querySelectorAll('.qty-input, .cost-input, .carbon-input, .nitrogen-input, .moisture-input, .ash-input').forEach(function (el) {
       el.addEventListener('input', recalc);
     });
+
+    // A standard material comes in already chosen, with its cost and standard
+    // percentages shown — only the weight is left to type. Any line can still
+    // be changed to another material or removed.
+    if (material) {
+      select.value = String(material.id);
+      select.dispatchEvent(new Event('change'));
+    }
   }
 
   // Mirrors server/lib/economics.js's summarizeIntakeItems exactly, so this
@@ -222,8 +231,14 @@
     }
   }
 
-  document.getElementById('add-row-btn').addEventListener('click', addRow);
-  addRow();
+  document.getElementById('add-row-btn').addEventListener('click', function () { addRow(); });
+
+  var standard = materials.filter(function (m) { return m.isDefault; });
+  if (standard.length) {
+    standard.forEach(addRow);
+  } else {
+    addRow();
+  }
 })();
 
 // Separate from the recipe builder above, which isn't on the page for a
